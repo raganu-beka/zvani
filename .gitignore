@@ -1,0 +1,40 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+out/
+
+# .NET user files
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ASP.NET secrets and local settings
+appsettings.*.local.json
+secrets.json
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Visual Studio
+.vs/
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+.npm/
+.eslintcache
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
