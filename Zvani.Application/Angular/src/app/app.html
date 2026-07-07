@@ -3,7 +3,7 @@
   class="terminal-field min-h-dvh overflow-x-hidden bg-[#111111] px-5 py-7 font-mono text-[#d6d2ca] selection:bg-[#ffa657] selection:text-[#111111] sm:px-12 sm:py-12 lg:px-24 lg:py-16"
 >
   <section class="relative z-10 flex min-h-[calc(100dvh-3.5rem)] max-w-5xl flex-col">
-    <div class="mt-10 grid gap-5 text-sm font-bold uppercase text-[#807f80] sm:mt-16 sm:text-base">
+    <div class="mt-10 grid gap-5 text-sm font-bold text-[#807f80] sm:mt-16 sm:text-base">
       @for (entry of consoleLog(); track entry.time + entry.text) {
         <p
           [class.text-[#d6d2ca]]="entry.kind === 'input'"
@@ -47,8 +47,8 @@
       </div>
 
       <div
-        class="grid gap-2 text-sm font-bold uppercase text-[#858585] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4">
-        <span class="wrap-break-word text-[#ffa657]">press enter↵ to send alert</span>
+        class="grid gap-2 text-sm font-bold text-[#858585] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4">
+        <span class="wrap-break-word text-[#ffa657]">PRESS ENTER↵ TO SEND ALERT</span>
       </div>
     </form>
 

@@ -17,15 +17,10 @@ type SendAlertResponse = {
   styleUrl: './app.scss',
 })
 export class App {
-  private readonly http = inject(HttpClient);
-
-  @ViewChild('terminalInput') private readonly terminalInput?: ElementRef<HTMLInputElement>;
-
   protected readonly hasSent = signal(false);
   protected readonly currentInput = signal('');
   protected readonly isSending = signal(false);
   protected readonly consoleLog = signal<ConsoleLog[]>(this.createInitialConsoleLog());
-
   protected readonly promptLabel = computed(() => {
     if (this.isSending()) {
       return 'sending';
@@ -37,19 +32,17 @@ export class App {
 
     return 'alert';
   });
-
   protected readonly placeholder = computed(() => {
     if (this.isSending()) {
       return 'waiting for the alert pipe ...';
     }
 
     if (this.hasSent()) {
-      return 'Send another alert message ...';
+      return 'send another alert message ...';
     }
 
     return 'type alert message...';
   });
-
   protected readonly asciiArt = String.raw`
  _______  __   __  _______  __    _  ___
 |       ||  | |  ||   _   ||  |  | ||   |
@@ -59,6 +52,8 @@ export class App {
 | |_____  |     | |   _   || | |   ||   |
 |_______|  |___|  |__| |__||_|  |__||___|
 `;
+  private readonly http = inject(HttpClient);
+  @ViewChild('terminalInput') private readonly terminalInput?: ElementRef<HTMLInputElement>;
 
   protected submitInput(): void {
     this.submitValue(this.terminalInput?.nativeElement.value ?? this.currentInput());
@@ -87,7 +82,7 @@ export class App {
 
     this.http.post<SendAlertResponse>('/api/alert/send', { message }).subscribe({
       next: (response) => {
-        this.appendLog('success', `${response.message} tiny siren deployed`);
+        this.appendLog('success', `${response.message} TINY SIREN DEPLOYED`);
         this.appendLog('muted', 'TYPE ANOTHER MESSAGE TO BOTHER THE INTERNET AGAIN');
         this.hasSent.set(true);
         this.isSending.set(false);
