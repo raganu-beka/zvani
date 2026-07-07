@@ -36,7 +36,9 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('user@zvani');
     expect(compiled.textContent).not.toContain('sending@zvani');
-    expect(compiled.querySelector('#terminal-placeholder')?.textContent).toContain('tiny siren');
+    expect(compiled.querySelector('#terminal-placeholder')?.textContent).toContain(
+      'sending alert message',
+    );
   });
 
   it('should focus the terminal input after rendering', async () => {
