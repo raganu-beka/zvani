@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  background: #111111;
+  font-family:
+    "IBM Plex Mono",
+    "JetBrains Mono",
+    "SFMono-Regular",
+    Consolas,
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #111111;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.terminal-field {
+  position: relative;
+}
+
+.terminal-field::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(46vw, 42rem);
+  opacity: 0.45;
+  background:
+    linear-gradient(#626262 0 0) 0 8% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 20% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 32% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 57% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 69% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 84% / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 0 12%, #626262 12% 12.25%, transparent 12.25% 100%),
+    linear-gradient(90deg, transparent 0 36%, #626262 36% 36.25%, transparent 36.25% 100%),
+    linear-gradient(90deg, transparent 0 60%, #626262 60% 60.25%, transparent 60.25% 100%),
+    linear-gradient(90deg, transparent 0 84%, #626262 84% 84.25%, transparent 84.25% 100%);
+}
+
+.terminal-line {
+  text-wrap: balance;
+}
+
+.terminal-cursor {
+  animation: terminal-blink 1.05s steps(2, start) infinite;
+}
+
+@media (max-width: 760px) {
+  .terminal-field::before {
+    width: 100%;
+    opacity: 0.18;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-cursor {
+    animation: none;
+  }
+}
+
+@keyframes terminal-blink {
+  to {
+    visibility: hidden;
+  }
+}

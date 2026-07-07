@@ -1,0 +1,76 @@
+<main
+  (click)="focusInput()"
+  class="terminal-field min-h-dvh overflow-x-hidden bg-[#111111] px-5 py-7 font-mono text-[#d6d2ca] selection:bg-[#ffa657] selection:text-[#111111] sm:px-12 sm:py-12 lg:px-24 lg:py-16"
+>
+  <section class="relative z-10 flex min-h-[calc(100dvh-3.5rem)] max-w-5xl flex-col">
+    <header class="flex items-center gap-3 text-[#f2f0ea]">
+      <span aria-hidden="true" class="grid size-7 grid-cols-2 grid-rows-2 gap-1">
+        <span class="rounded-full bg-[#f2f0ea]"></span>
+        <span></span>
+        <span class="rounded-sm bg-[#f2f0ea]"></span>
+        <span class="rounded-full bg-[#f2f0ea]"></span>
+      </span>
+      <h1 class="text-2xl font-semibold tracking-[-0.01em] sm:text-3xl">zvani</h1>
+    </header>
+
+    <div class="mt-16 grid gap-5 text-sm font-bold uppercase tracking-[0.08em] text-[#807f80] sm:mt-20 sm:text-base">
+      @for (entry of consoleLog(); track entry.time + entry.text) {
+        <p
+          [class.text-[#d6d2ca]]="entry.kind === 'input'"
+          [class.text-[#ff8274]]="entry.kind === 'error'"
+          [class.text-[#ffa657]]="entry.kind === 'success'"
+          class="terminal-line grid gap-3 sm:grid-cols-[6.5rem_1fr]"
+        >
+          <span class="tabular-nums">{{ entry.time }}</span>
+          <span>{{ entry.text }}</span>
+        </p>
+      }
+    </div>
+
+    <pre
+      aria-label="zvani ASCII art"
+      class="mt-10 hidden whitespace-pre text-[0.58rem] font-semibold leading-[1.05] text-[#858585] sm:block md:text-xs"
+    >{{ asciiArt }}</pre>
+
+    <form
+      (submit)="$event.preventDefault(); submitInput()"
+      aria-label="zvani terminal"
+      class="mt-10 grid max-w-3xl gap-4 sm:mt-12"
+    >
+      <label class="sr-only" for="terminal-input">Terminal command</label>
+      <div class="flex min-h-14 items-center border-b border-[#4a4a4a] text-xl sm:text-2xl">
+        <span class="shrink-0 font-bold text-[#ffa657]">{{ promptLabel() }}&#64;alert</span>
+        <span class="mx-3 text-[#6b6b6b]">$</span>
+        <input
+          #terminalInput
+          (input)="currentInput.set($any($event.target).value)"
+          (keydown.enter)="$event.preventDefault(); submitValue($any($event.target).value)"
+          [disabled]="isSending()"
+          [placeholder]="placeholder()"
+          [value]="currentInput()"
+          autocomplete="off"
+          class="min-w-0 flex-1 bg-transparent py-3 text-[#f2f0ea] caret-[#ffa657] outline-none placeholder:text-[#5f5f5f]"
+          id="terminal-input"
+          spellcheck="false"
+        />
+        <span aria-hidden="true" class="terminal-cursor ml-1 h-7 w-3 bg-[#ffa657]"></span>
+      </div>
+
+      <div
+        class="grid gap-2 text-sm font-bold uppercase tracking-[0.08em] text-[#858585] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4">
+        <button
+          (click)="$event.stopPropagation(); fillCommand()"
+          class="w-fit text-left text-[#ffa657] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffa657]"
+          type="button"
+        >
+          insert send alert ->
+        </button>
+        <span class="break-words">press enter to run</span>
+      </div>
+    </form>
+
+    <p class="mt-auto pt-12 text-sm font-bold uppercase tracking-[0.08em] text-[#ffa657]">
+      alert responsibly, or at least confidently ->
+    </p>
+  </section>
+</main>
