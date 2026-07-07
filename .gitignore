@@ -12,6 +12,7 @@ wwwroot/
 *.sln.docstates
 
 # ASP.NET secrets and local settings
+appsettings.Development.json
 appsettings.*.local.json
 secrets.json
 
