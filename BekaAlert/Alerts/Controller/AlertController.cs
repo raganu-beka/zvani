@@ -1,6 +1,5 @@
 using BekaAlert.Alerts.Contracts;
 using BekaAlert.Alerts.Interfaces;
-using BekaAlert.Alerts.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BekaAlert.Alerts.Controller;
@@ -13,7 +12,6 @@ public sealed class AlertController(IAlertService alertService) : ControllerBase
     public IActionResult Send(SendAlertRequest request)
     {
         var response = alertService.Send(request);
-
         return Accepted(response);
     }
 }
