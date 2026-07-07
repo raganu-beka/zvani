@@ -1,8 +1,8 @@
-using BekaAlert.Alerts.Contracts;
-using BekaAlert.Alerts.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Zvani.Application.Alerts.Contracts;
+using Zvani.Application.Alerts.Interfaces;
 
-namespace BekaAlert.Alerts.Controller;
+namespace Zvani.Application.Alerts.Controller;
 
 [ApiController]
 [Route("api/alert")]

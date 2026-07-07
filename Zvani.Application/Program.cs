@@ -1,6 +1,6 @@
-using BekaAlert.Alerts.Interfaces;
-using BekaAlert.Alerts.Services;
 using Serilog;
+using Zvani.Application.Alerts.Interfaces;
+using Zvani.Application.Alerts.Services;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()

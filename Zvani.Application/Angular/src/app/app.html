@@ -1,64 +1,81 @@
 <main
   (click)="focusInput()"
-  class="terminal-field min-h-dvh overflow-x-hidden bg-[#111111] px-5 py-7 font-mono text-[#d6d2ca] selection:bg-[#ffa657] selection:text-[#111111] sm:px-12 sm:py-12 lg:px-24 lg:py-16"
+  class="terminal-field h-dvh overflow-hidden bg-[#111111] px-5 py-5 font-mono text-[#d6d2ca] selection:bg-[#ffa657] selection:text-[#111111] sm:px-10 sm:py-8 lg:px-16 lg:py-10"
 >
-  <section class="relative z-10 flex min-h-[calc(100dvh-3.5rem)] max-w-5xl flex-col">
-    <div class="mt-10 grid gap-5 text-sm font-bold text-[#807f80] sm:mt-16 sm:text-base">
+  <section class="relative z-10 h-full max-w-5xl">
+    <div
+      class="absolute left-0 right-0 top-0 max-h-[38dvh] overflow-hidden pt-2 text-xs font-bold text-[#807f80] sm:pt-4 sm:text-sm lg:text-base">
       @for (entry of consoleLog(); track entry.time + entry.text) {
         <p
           [class.text-[#d6d2ca]]="entry.kind === 'input'"
           [class.text-[#ff8274]]="entry.kind === 'error'"
           [class.text-[#ffa657]]="entry.kind === 'success'"
-          class="terminal-line grid gap-3 sm:grid-cols-[6.5rem_1fr]"
+          class="terminal-line mb-2 grid gap-3 leading-tight sm:mb-3 sm:grid-cols-[6.5rem_1fr]"
         >
           <span class="tabular-nums">[{{ entry.time }}]</span>
-          <span>{{ entry.text }}</span>
+          <span class="truncate">{{ entry.text }}</span>
         </p>
       }
     </div>
 
-    <pre
-      aria-label="zvani ASCII art"
-      class="mt-10 hidden whitespace-pre text-[0.58rem] font-semibold leading-[1.05] text-[#858585] sm:block md:text-xs"
-    >{{ asciiArt }}</pre>
+    <div class="absolute left-0 top-[56%] w-full max-w-3xl -translate-y-1/2">
+      <pre
+        aria-label="zvani ASCII art"
+        class="hidden whitespace-pre text-[0.5rem] font-semibold leading-[1.02] text-[#858585] sm:block md:text-[0.7rem]"
+      >{{ asciiArt }}</pre>
 
-    <form
-      (submit)="$event.preventDefault(); submitInput()"
-      aria-label="zvani terminal"
-      class="mt-10 grid max-w-3xl gap-4 sm:mt-12"
-    >
-      <label class="sr-only" for="terminal-input">Alert message</label>
-      <div class="flex min-h-14 max-w-full items-center overflow-hidden border-b border-[#4a4a4a] text-xl sm:text-2xl">
-        <span class="shrink-0 whitespace-nowrap font-bold text-[#ffa657]">{{ promptLabel() }}&#64;zvani</span>
-        <span class="mx-3 shrink-0 whitespace-nowrap text-[#6b6b6b]">$</span>
-        <input
-          #terminalInput
-          (input)="currentInput.set($any($event.target).value)"
-          (keydown.enter)="$event.preventDefault(); submitValue($any($event.target).value)"
-          [disabled]="isSending()"
-          [style.width.ch]="inputColumnWidth()"
-          aria-describedby="terminal-placeholder"
-          [value]="currentInput()"
-          autocomplete="off"
-          class="terminal-input min-w-0 max-w-[min(48ch,calc(100vw-12rem))] bg-transparent py-3 text-[#f2f0ea] caret-transparent outline-none"
-          id="terminal-input"
-          spellcheck="false"
-        />
-        <span aria-hidden="true" class="terminal-cursor ml-1 h-7 w-[0.65ch] shrink-0 bg-[#ffa657]"></span>
-        @if (showPlaceholder()) {
-          <span id="terminal-placeholder" class="ml-3 truncate text-[#5f5f5f]">
-            {{ placeholder() }}
+      <form
+        (submit)="$event.preventDefault(); submitInput()"
+        aria-label="zvani terminal"
+        class="mt-5 grid gap-3 sm:mt-7"
+      >
+        <label class="sr-only" for="terminal-input">Alert message</label>
+        <div
+          class="flex min-h-14 max-w-full items-center overflow-hidden border-b border-[#4a4a4a] text-xl sm:text-2xl">
+          <span class="shrink-0 whitespace-nowrap font-bold text-[#ffa657]">{{ promptLabel }}&#64;zvani</span>
+          <span class="mx-3 shrink-0 whitespace-nowrap text-[#6b6b6b]">$</span>
+          <span class="terminal-input-frame relative h-14 min-w-0 flex-1 overflow-hidden">
+            <input
+              #terminalInput
+              (click)="syncCursorFromEvent($event)"
+              (input)="updateInput($event)"
+              (keydown.enter)="$event.preventDefault(); submitValue($any($event.target).value)"
+              (keyup)="syncCursorFromEvent($event)"
+              (mouseup)="syncCursorFromEvent($event)"
+              (scroll)="syncCursorFromEvent($event)"
+              (select)="syncCursorFromEvent($event)"
+              [attr.aria-disabled]="isSending()"
+              [readOnly]="isSending()"
+              [value]="currentInput()"
+              aria-describedby="terminal-placeholder"
+              autocomplete="off"
+              class="terminal-input h-full w-full bg-transparent py-3 pr-3 text-[#f2f0ea] caret-transparent outline-none"
+              id="terminal-input"
+              spellcheck="false"
+            />
+            <span
+              [class.opacity-0]="hasSelection()"
+              [style.left.px]="cursorOffset()"
+              aria-hidden="true"
+              class="terminal-cursor pointer-events-none absolute top-1/2 h-7 w-[0.65ch] -translate-y-1/2 bg-[#ffa657]"
+            ></span>
+            @if (showPlaceholder()) {
+              <span class="pointer-events-none absolute left-[1.65ch] top-1/2 max-w-[calc(100%-1.65ch)] -translate-y-1/2 truncate text-[#5f5f5f]"
+                    id="terminal-placeholder">
+                {{ placeholder() }}
+              </span>
+            }
           </span>
-        }
-      </div>
+        </div>
 
-      <div
-        class="grid gap-2 text-sm font-bold text-[#858585] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4">
-        <span class="wrap-break-word text-[#ffa657]">PRESS ENTER↵ TO SEND ALERT</span>
-      </div>
-    </form>
+        <div
+          class="grid gap-2 text-sm font-bold text-[#858585] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4">
+          <span class="wrap-break-word text-[#ffa657]">PRESS ENTER↵ TO SEND ALERT</span>
+        </div>
+      </form>
+    </div>
 
-    <p class="mt-auto pt-12 text-sm font-bold text-[#ffa657]">
+    <p class="absolute bottom-0 left-0 text-xs font-bold text-[#ffa657] sm:text-sm">
       alert responsibly, or at least confidently :)
     </p>
   </section>

@@ -1,5 +1,13 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, computed, ElementRef, inject, signal, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  signal,
+  ViewChild,
+} from '@angular/core';
 
 type ConsoleLog = {
   time: string;
@@ -16,38 +24,27 @@ type SendAlertResponse = {
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App {
+export class App implements AfterViewInit {
   protected readonly hasSent = signal(false);
   protected readonly currentInput = signal('');
+  protected readonly cursorOffset = signal(0);
+  protected readonly hasSelection = signal(false);
   protected readonly isSending = signal(false);
   protected readonly consoleLog = signal<ConsoleLog[]>(this.createInitialConsoleLog());
-  protected readonly promptLabel = computed(() => {
-    if (this.isSending()) {
-      return 'sending';
-    }
-
-    if (this.hasSent()) {
-      return 'again';
-    }
-
-    return 'alert';
-  });
+  protected readonly promptLabel = 'user';
   protected readonly placeholder = computed(() => {
     if (this.isSending()) {
-      return 'waiting for the alert pipe ...';
+      return 'sending alert message...';
     }
 
     if (this.hasSent()) {
-      return 'send another alert message ...';
+      return 'send another alert message...';
     }
 
     return 'type alert message...';
   });
-  protected readonly inputColumnWidth = computed(() => {
-    return Math.min(this.currentInput().length, 48);
-  });
   protected readonly showPlaceholder = computed(() => {
-    return !this.currentInput() && !this.isSending();
+    return !this.currentInput();
   });
   protected readonly asciiArt = String.raw`
  _______  __   __  _______  __    _  ___
@@ -58,8 +55,28 @@ export class App {
 | |_____  |     | |   _   || | |   ||   |
 |_______|  |___|  |__| |__||_|  |__||___|
 `;
+  private readonly maxConsoleEntries = 12;
+  private readonly minLogDelayMs = 107;
+  private readonly maxLogDelayMs = 308;
   private readonly http = inject(HttpClient);
   @ViewChild('terminalInput') private readonly terminalInput?: ElementRef<HTMLInputElement>;
+
+  ngAfterViewInit(): void {
+    this.focusInput();
+  }
+
+  protected updateInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+
+    this.currentInput.set(input.value);
+    this.syncCursor(input);
+  }
+
+  protected syncCursorFromEvent(event: Event): void {
+    const input = event.target as HTMLInputElement;
+
+    queueMicrotask(() => this.syncCursor(input));
+  }
 
   protected submitInput(): void {
     this.submitValue(this.terminalInput?.nativeElement.value ?? this.currentInput());
@@ -74,28 +91,55 @@ export class App {
 
     this.appendLog('input', `$ ${value}`);
     this.setInputValue('');
+    this.focusInput();
     this.sendAlert(value);
   }
 
   protected focusInput(): void {
-    queueMicrotask(() => this.terminalInput?.nativeElement.focus());
+    queueMicrotask(() => {
+      this.terminalInput?.nativeElement.focus();
+      this.syncCursor();
+    });
   }
 
   private sendAlert(message: string): void {
     this.isSending.set(true);
-    this.appendLog('noise', 'PACKING ALERT INTO A VERY SMALL ENVELOPE ...');
-    this.appendLog('noise', 'ASKING /api/alert/send IF IT IS READY FOR RESPONSIBILITY ...');
+    const noiseSequence = this.appendDelayedLogs([
+      {
+        kind: 'noise',
+        text: 'PACKING ALERT INTO A VERY SMALL ENVELOPE ...',
+      },
+      {
+        kind: 'noise',
+        text: 'ASKING /api/alert/send IF IT IS READY FOR RESPONSIBILITY ...',
+      },
+    ]);
 
     this.http.post<SendAlertResponse>('/api/alert/send', { message }).subscribe({
-      next: (response) => {
-        this.appendLog('success', `${response.message} TINY SIREN DEPLOYED`);
-        this.appendLog('muted', 'TYPE ANOTHER MESSAGE TO BOTHER THE INTERNET AGAIN');
+      next: async (response) => {
+        await noiseSequence;
+        await this.appendDelayedLogs([
+          {
+            kind: 'success',
+            text: `${response.message} TINY SIREN DEPLOYED`,
+          },
+          {
+            kind: 'muted',
+            text: 'TYPE ANOTHER MESSAGE TO BOTHER THE INTERNET AGAIN',
+          },
+        ]);
         this.hasSent.set(true);
         this.isSending.set(false);
         this.focusInput();
       },
-      error: () => {
-        this.appendLog('error', 'ALERT PIPE SAID NO. RUDE.');
+      error: async () => {
+        await noiseSequence;
+        await this.appendDelayedLogs([
+          {
+            kind: 'error',
+            text: 'ALERT PIPE SAID NO. RUDE.',
+          },
+        ]);
         this.isSending.set(false);
         this.focusInput();
       },
@@ -107,7 +151,35 @@ export class App {
 
     if (this.terminalInput) {
       this.terminalInput.nativeElement.value = value;
+      this.syncCursor(this.terminalInput.nativeElement);
     }
+  }
+
+  private syncCursor(input = this.terminalInput?.nativeElement): void {
+    if (!input) {
+      return;
+    }
+
+    const selectionStart = input.selectionStart ?? input.value.length;
+    const selectionEnd = input.selectionEnd ?? selectionStart;
+    const textBeforeCursor = input.value.slice(0, selectionStart);
+    const textWidth = this.measureInputText(input, textBeforeCursor);
+    const offset = Math.max(0, Math.min(textWidth - input.scrollLeft, input.clientWidth));
+
+    this.cursorOffset.set(offset);
+    this.hasSelection.set(selectionStart !== selectionEnd);
+  }
+
+  private measureInputText(input: HTMLInputElement, text: string): number {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      return text.length * 10;
+    }
+
+    context.font = getComputedStyle(input).font;
+    return context.measureText(text).width;
   }
 
   private appendLog(kind: ConsoleLog['kind'], text: string): void {
@@ -117,7 +189,28 @@ export class App {
       text,
     };
 
-    this.consoleLog.update((items) => [...items, entry].slice(-12));
+    this.consoleLog.update((items) => [...items, entry].slice(-this.maxConsoleEntries));
+  }
+
+  private async appendDelayedLogs(
+    entries: Array<Pick<ConsoleLog, 'kind' | 'text'>>,
+  ): Promise<void> {
+    for (const entry of entries) {
+      await this.wait(this.randomLogDelay());
+      this.appendLog(entry.kind, entry.text);
+    }
+  }
+
+  private randomLogDelay(): number {
+    const range = this.maxLogDelayMs - this.minLogDelayMs;
+
+    return this.minLogDelayMs + Math.round(Math.random() * range);
+  }
+
+  private wait(milliseconds: number): Promise<void> {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, milliseconds);
+    });
   }
 
   private createInitialConsoleLog(): ConsoleLog[] {

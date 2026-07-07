@@ -1,6 +1,6 @@
-using BekaAlert.Alerts.Contracts;
+using Zvani.Application.Alerts.Contracts;
 
-namespace BekaAlert.Alerts.Interfaces;
+namespace Zvani.Application.Alerts.Interfaces;
 
 public interface IAlertService
 {

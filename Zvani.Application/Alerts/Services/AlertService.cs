@@ -1,7 +1,7 @@
-using BekaAlert.Alerts.Contracts;
-using BekaAlert.Alerts.Interfaces;
+using Zvani.Application.Alerts.Contracts;
+using Zvani.Application.Alerts.Interfaces;
 
-namespace BekaAlert.Alerts.Services;
+namespace Zvani.Application.Alerts.Services;
 
 public sealed class AlertService(ILogger<AlertService> logger) : IAlertService
 {

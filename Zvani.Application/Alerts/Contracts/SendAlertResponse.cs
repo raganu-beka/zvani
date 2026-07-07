@@ -1,3 +1,3 @@
-namespace BekaAlert.Alerts.Contracts;
+namespace Zvani.Application.Alerts.Contracts;
 
 public sealed record SendAlertResponse(string Message);
