@@ -43,6 +43,12 @@ export class App {
 
     return 'type alert message...';
   });
+  protected readonly inputColumnWidth = computed(() => {
+    return Math.min(this.currentInput().length, 48);
+  });
+  protected readonly showPlaceholder = computed(() => {
+    return !this.currentInput() && !this.isSending();
+  });
   protected readonly asciiArt = String.raw`
  _______  __   __  _______  __    _  ___
 |       ||  | |  ||   _   ||  |  | ||   |

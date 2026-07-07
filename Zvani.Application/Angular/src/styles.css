@@ -69,6 +69,8 @@ input {
 
 .terminal-input {
   caret-color: transparent;
+  flex: 0 1 auto;
+  width: auto;
 }
 
 .terminal-cursor {

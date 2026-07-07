@@ -22,8 +22,6 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('alert@zvani');
     expect(compiled.textContent).not.toContain('22:28:38');
-    expect(compiled.querySelector('#terminal-input')?.getAttribute('placeholder')).toContain(
-      'alert message',
-    );
+    expect(compiled.querySelector('#terminal-placeholder')?.textContent).toContain('alert message');
   });
 });
