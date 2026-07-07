@@ -1,0 +1,17 @@
+<section class="alert-action">
+  <button type="button" [disabled]="isSending()" (click)="sendAlert()">
+    @if (isSending()) {
+      Sending...
+    } @else {
+      Send alert
+    }
+  </button>
+
+  @if (resultMessage()) {
+    <p class="status success">{{ resultMessage() }}</p>
+  }
+
+  @if (errorMessage()) {
+    <p class="status error">{{ errorMessage() }}</p>
+  }
+</section>
