@@ -16,10 +16,14 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render the terminal heading', async () => {
+  it('should render the direct alert prompt', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('zvani');
+    expect(compiled.textContent).toContain('alert@zvani');
+    expect(compiled.textContent).not.toContain('22:28:38');
+    expect(compiled.querySelector('#terminal-input')?.getAttribute('placeholder')).toContain(
+      'alert message',
+    );
   });
 });

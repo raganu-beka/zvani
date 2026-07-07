@@ -4,10 +4,12 @@
   color-scheme: dark;
   background: #111111;
   font-family:
-    "IBM Plex Mono",
-    "JetBrains Mono",
     "SFMono-Regular",
+    Menlo,
+    Monaco,
     Consolas,
+    "Liberation Mono",
+    "Courier New",
     monospace;
 }
 
@@ -32,6 +34,14 @@ input {
 
 .terminal-field {
   position: relative;
+  font-family:
+    "SFMono-Regular",
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace;
 }
 
 .terminal-field::before {
@@ -55,6 +65,10 @@ input {
 
 .terminal-line {
   text-wrap: balance;
+}
+
+.terminal-input {
+  caret-color: transparent;
 }
 
 .terminal-cursor {

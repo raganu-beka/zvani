@@ -21,29 +21,21 @@ export class App {
 
   @ViewChild('terminalInput') private readonly terminalInput?: ElementRef<HTMLInputElement>;
 
-  protected readonly step = signal<'command' | 'message' | 'sent'>('command');
+  protected readonly hasSent = signal(false);
   protected readonly currentInput = signal('');
   protected readonly isSending = signal(false);
-  protected readonly consoleLog = signal<ConsoleLog[]>([
-    { time: '22:28:38', kind: 'muted', text: 'HTTP REQUEST DETECTED ... probably yours' },
-    { time: '22:28:41', kind: 'muted', text: 'SERVICE WAKING UP ... stretching semicolons' },
-    { time: '22:28:45', kind: 'muted', text: 'TYPE send alert TO BEGIN' },
-  ]);
+  protected readonly consoleLog = signal<ConsoleLog[]>(this.createInitialConsoleLog());
 
   protected readonly promptLabel = computed(() => {
     if (this.isSending()) {
       return 'sending';
     }
 
-    if (this.step() === 'message') {
-      return 'message';
-    }
-
-    if (this.step() === 'sent') {
+    if (this.hasSent()) {
       return 'again';
     }
 
-    return 'zvani';
+    return 'alert';
   });
 
   protected readonly placeholder = computed(() => {
@@ -51,15 +43,11 @@ export class App {
       return 'waiting for the alert pipe ...';
     }
 
-    if (this.step() === 'message') {
-      return 'The database is on fire, but emotionally.';
+    if (this.hasSent()) {
+      return 'Send another alert message ...';
     }
 
-    if (this.step() === 'sent') {
-      return 'send alert';
-    }
-
-    return 'send alert';
+    return 'type alert message...';
   });
 
   protected readonly asciiArt = String.raw`
@@ -85,41 +73,11 @@ export class App {
 
     this.appendLog('input', `$ ${value}`);
     this.setInputValue('');
-
-    if (this.step() === 'command' || this.step() === 'sent') {
-      this.handleCommand(value);
-      return;
-    }
-
     this.sendAlert(value);
-  }
-
-  protected fillCommand(): void {
-    this.setInputValue('send alert');
-    this.focusInput();
   }
 
   protected focusInput(): void {
     queueMicrotask(() => this.terminalInput?.nativeElement.focus());
-  }
-
-  private handleCommand(command: string): void {
-    const normalized = command.toLowerCase();
-
-    if (
-      normalized === 'send alert' ||
-      normalized === 'zvani alert send' ||
-      normalized === 'alert send'
-    ) {
-      this.appendLog('noise', 'COMMAND ACCEPTED ... putting on serious keyboard face');
-      this.appendLog('noise', 'PLEASE PROVIDE MESSAGE ... make it dramatic');
-      this.step.set('message');
-      this.focusInput();
-      return;
-    }
-
-    this.appendLog('error', `UNKNOWN COMMAND: ${command}`);
-    this.appendLog('noise', 'TRY send alert ... the terminal only learned one trick');
   }
 
   private sendAlert(message: string): void {
@@ -130,14 +88,13 @@ export class App {
     this.http.post<SendAlertResponse>('/api/alert/send', { message }).subscribe({
       next: (response) => {
         this.appendLog('success', `${response.message} tiny siren deployed`);
-        this.appendLog('muted', 'TYPE send alert TO BOTHER THE INTERNET AGAIN');
-        this.step.set('sent');
+        this.appendLog('muted', 'TYPE ANOTHER MESSAGE TO BOTHER THE INTERNET AGAIN');
+        this.hasSent.set(true);
         this.isSending.set(false);
         this.focusInput();
       },
       error: () => {
         this.appendLog('error', 'ALERT PIPE SAID NO. RUDE.');
-        this.step.set('message');
         this.isSending.set(false);
         this.focusInput();
       },
@@ -154,16 +111,46 @@ export class App {
 
   private appendLog(kind: ConsoleLog['kind'], text: string): void {
     const entry = {
-      time: new Intl.DateTimeFormat('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      }).format(new Date()),
+      time: this.formatTime(new Date()),
       kind,
       text,
     };
 
     this.consoleLog.update((items) => [...items, entry].slice(-12));
+  }
+
+  private createInitialConsoleLog(): ConsoleLog[] {
+    const now = new Date();
+
+    return [
+      {
+        time: this.formatTime(this.addSeconds(now, -7)),
+        kind: 'muted',
+        text: 'HTTP REQUEST DETECTED ... probably yours',
+      },
+      {
+        time: this.formatTime(this.addSeconds(now, -4)),
+        kind: 'muted',
+        text: 'SERVICE WAKING UP ... stretching semicolons',
+      },
+      {
+        time: this.formatTime(now),
+        kind: 'muted',
+        text: 'TYPE MESSAGE AND PRESS ENTER TO SEND',
+      },
+    ];
+  }
+
+  private addSeconds(date: Date, seconds: number): Date {
+    return new Date(date.getTime() + seconds * 1000);
+  }
+
+  private formatTime(date: Date): string {
+    return new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(date);
   }
 }
