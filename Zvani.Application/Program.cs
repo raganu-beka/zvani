@@ -42,6 +42,7 @@ builder.Services.AddSingleton<ITwilioRestClient>(sp =>
     var options = sp.GetRequiredService<IOptions<TwilioOptions>>().Value;
     return new TwilioRestClient(options.AccountSid, options.AuthToken);
 });
+
 builder.Services.AddScoped<IEmailSender, AzureEmailSender>();
 builder.Services.AddScoped<ISmsSender, TwilioSmsSender>();
 builder.Services.AddScoped<IAlertService, AlertService>();
