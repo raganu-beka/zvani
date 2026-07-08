@@ -8,7 +8,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  dockerRegistryServiceConnection: raganu-beka
+  dockerRegistryServiceConnection: raganubeka-ghcr
   imageRepository: raganu-beka/zvani
   dockerfilePath: Dockerfile
   buildContext: .
