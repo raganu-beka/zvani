@@ -19,7 +19,8 @@ public sealed class AlertService(
             ? "Alert notification received."
             : request.Message;
 
-        await emailSender.SendAsync(receiverEmail, "Zvani Alert", message, cancellationToken);
+        await emailSender.SendAsync(receiverEmail, notificationOptions.Value.DefaultSubject, message,
+            cancellationToken);
 
         return new SendAlertResponse("Alert request accepted.");
     }

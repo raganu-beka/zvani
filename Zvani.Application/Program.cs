@@ -1,3 +1,5 @@
+using Azure.Communication.Email;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Zvani.Application.Alerts.Configuration;
 using Zvani.Application.Alerts.Interfaces;
@@ -14,8 +16,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddOptions<SmtpOptions>()
-    .Bind(builder.Configuration.GetRequiredSection(SmtpOptions.SectionName))
+builder.Services.AddOptions<AzureEmailOptions>()
+    .Bind(builder.Configuration.GetRequiredSection(AzureEmailOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
@@ -24,7 +26,12 @@ builder.Services.AddOptions<AlertNotificationOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddSingleton(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<AzureEmailOptions>>().Value;
+    return new EmailClient(options.ConnectionString);
+});
+builder.Services.AddScoped<IEmailSender, AzureEmailSender>();
 builder.Services.AddScoped<IAlertService, AlertService>();
 
 var app = builder.Build();
