@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import {
   AfterViewInit,
   Component,
@@ -19,8 +19,16 @@ type ConsoleLog = {
 };
 
 type SendAlertResponse = {
+  accepted: boolean;
   emailSucceeded: boolean;
   smsSucceeded: boolean;
+  remainingUsage: RemainingUsage;
+};
+
+type RemainingUsage = {
+  limit: number;
+  remaining: number;
+  nextResetAtUtc: string | null;
 };
 
 @Component({
@@ -133,6 +141,12 @@ export class App implements AfterViewInit, OnDestroy {
     'ALERT DID NOT LAUNCH ... CONTROL TOWER IS SQUINTING',
     'NETWORK SAID ABSOLUTELY NOT ... VERY DRAMATIC',
   ] as const;
+  private readonly usageLimitMessages = [
+    'ALERT LIMIT REACHED ... THE WINDOW IS STILL ROLLING',
+    'REQUEST BLOCKED ... DAILY CHAOS BUDGET IS EMPTY',
+    'ALERT DENIED ... THREE REQUESTS ARE ALREADY ON THE BOARD',
+    'RATE LIMIT SAYS WAIT ... IT BROUGHT RECEIPTS',
+  ] as const;
 
   constructor() {
     effect(() => {
@@ -220,6 +234,8 @@ export class App implements AfterViewInit, OnDestroy {
       next: async (response) => {
         await noiseSequence;
         await this.appendDelayedLogs(this.createChannelResultConsoleLog(response));
+        this.logRemainingUsage(response.remainingUsage);
+        await this.appendDelayedLogs(this.createRemainingUsageConsoleLog(response.remainingUsage));
         await this.appendDelayedLogs([
           { kind: 'muted', text: this.randomMessage(this.readyMessages) },
         ]);
@@ -227,8 +243,24 @@ export class App implements AfterViewInit, OnDestroy {
         this.isSending.set(false);
         this.focusInput();
       },
-      error: async () => {
+      error: async (error: HttpErrorResponse) => {
         await noiseSequence;
+
+        const response = this.getAlertErrorResponse(error);
+        if (error.status === 429 && response?.remainingUsage) {
+          this.logRemainingUsage(response.remainingUsage);
+          await this.appendDelayedLogs([
+            {
+              kind: 'error',
+              text: this.randomMessage(this.usageLimitMessages),
+            },
+            ...this.createRemainingUsageConsoleLog(response.remainingUsage),
+          ]);
+          this.isSending.set(false);
+          this.focusInput();
+          return;
+        }
+
         await this.appendDelayedLogs([
           {
             kind: 'error',
@@ -373,6 +405,37 @@ export class App implements AfterViewInit, OnDestroy {
     ];
   }
 
+  private createRemainingUsageConsoleLog(
+    remainingUsage: RemainingUsage,
+  ): Array<Pick<ConsoleLog, 'kind' | 'text'>> {
+    return [
+      {
+        kind: 'muted',
+        text: `ALERTS REMAINING: ${remainingUsage.remaining}/${remainingUsage.limit}`,
+      },
+      {
+        kind: 'muted',
+        text: `NEXT RESET: ${this.formatResetAt(remainingUsage.nextResetAtUtc)}`,
+      },
+    ];
+  }
+
+  private logRemainingUsage(remainingUsage: RemainingUsage): void {
+    console.info('Alert remaining usage', {
+      remaining: remainingUsage.remaining,
+      limit: remainingUsage.limit,
+      nextResetAt: remainingUsage.nextResetAtUtc,
+    });
+  }
+
+  private getAlertErrorResponse(error: HttpErrorResponse): SendAlertResponse | null {
+    if (!error.error || typeof error.error !== 'object') {
+      return null;
+    }
+
+    return error.error as SendAlertResponse;
+  }
+
   private randomMessage(messages: readonly string[]): string {
     return messages[Math.floor(Math.random() * messages.length)];
   }
@@ -388,5 +451,17 @@ export class App implements AfterViewInit, OnDestroy {
       second: '2-digit',
       hour12: false,
     }).format(date);
+  }
+
+  private formatResetAt(value: string | null): string {
+    if (!value) {
+      return 'NO ACTIVE WINDOW';
+    }
+
+    return new Intl.DateTimeFormat('en-GB', {
+      dateStyle: 'medium',
+      timeStyle: 'medium',
+      hour12: false,
+    }).format(new Date(value));
   }
 }

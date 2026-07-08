@@ -8,12 +8,23 @@ namespace Zvani.Application.Alerts.Services;
 public sealed class AlertService(
     IEmailSender emailSender,
     ISmsSender smsSender,
+    IAlertUsageLimiter alertUsageLimiter,
     IOptions<AlertNotificationOptions> notificationOptions,
     ILogger<AlertService> logger) : IAlertService
 {
-    public async Task<SendAlertResponse> SendAsync(SendAlertRequest request, CancellationToken cancellationToken)
+    public async Task<SendAlertResponse> SendAsync(
+        string userId,
+        SendAlertRequest request,
+        CancellationToken cancellationToken)
     {
-        logger.LogInformation("Received alert request: {@Request}", request);
+        logger.LogInformation("Received alert request for {UserId}: {@Request}", userId, request);
+
+        var usageLease = alertUsageLimiter.TryConsume(userId);
+        if (!usageLease.IsAllowed)
+        {
+            logger.LogInformation("Alert request rejected for {UserId}; usage limit reached.", userId);
+            return new SendAlertResponse(false, false, false, usageLease.RemainingUsage);
+        }
 
         var options = notificationOptions.Value;
         var message = string.IsNullOrWhiteSpace(request.Message)
@@ -25,7 +36,7 @@ public sealed class AlertService(
 
         await Task.WhenAll(emailTask, smsTask);
 
-        return new SendAlertResponse(emailTask.Result, smsTask.Result);
+        return new SendAlertResponse(true, emailTask.Result, smsTask.Result, usageLease.RemainingUsage);
     }
 
     private async Task<bool> SendEmailAsync(

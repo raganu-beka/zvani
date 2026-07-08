@@ -4,5 +4,5 @@ namespace Zvani.Application.Alerts.Interfaces;
 
 public interface IAlertService
 {
-    Task<SendAlertResponse> SendAsync(SendAlertRequest request, CancellationToken cancellationToken);
+    Task<SendAlertResponse> SendAsync(string userId, SendAlertRequest request, CancellationToken cancellationToken);
 }

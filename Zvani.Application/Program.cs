@@ -61,6 +61,7 @@ builder.Services.AddSingleton<ITwilioRestClient>(sp =>
 
 builder.Services.AddScoped<IEmailSender, AzureEmailSender>();
 builder.Services.AddScoped<ISmsSender, TwilioSmsSender>();
+builder.Services.AddSingleton<IAlertUsageLimiter, InMemoryAlertUsageLimiter>();
 builder.Services.AddScoped<IAlertService, AlertService>();
 
 var app = builder.Build();
