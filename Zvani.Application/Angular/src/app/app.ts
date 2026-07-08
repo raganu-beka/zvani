@@ -42,8 +42,31 @@ export class App implements AfterViewInit, OnDestroy {
   protected readonly cursorOffset = signal(0);
   protected readonly hasSelection = signal(false);
   protected readonly isSending = signal(false);
+  protected readonly remainingUsage = signal<RemainingUsage | null>(null);
   protected readonly consoleLog = signal<ConsoleLog[]>([]);
+  protected readonly isUsageLimitReached = computed(() => this.remainingUsage()?.remaining === 0);
+  protected readonly isInputBlocked = computed(
+    () => this.isSending() || this.isUsageLimitReached(),
+  );
+  protected readonly limitReachedPlaceholder = 'alert limit reached...';
+  protected readonly limitReachedSubmitHintPrefix = 'ALERT LIMIT REACHED';
+  protected readonly submitHint = computed(() => {
+    const usage = this.remainingUsage();
+
+    if (usage?.remaining === 0) {
+      return `${this.limitReachedSubmitHintPrefix} · NEXT RESET ${this.formatResetAt(usage.nextResetAtUtc)}`;
+    }
+
+    return 'PRESS ENTER↵ TO SEND ALERT';
+  });
+  protected readonly isLimitReachedSubmitHint = computed(() => {
+    return this.submitHint().startsWith(this.limitReachedSubmitHintPrefix);
+  });
   protected readonly placeholder = computed(() => {
+    if (this.isUsageLimitReached()) {
+      return this.limitReachedPlaceholder;
+    }
+
     if (this.isSending()) {
       return 'sending alert message...';
     }
@@ -53,6 +76,9 @@ export class App implements AfterViewInit, OnDestroy {
     }
 
     return 'type alert message...';
+  });
+  protected readonly isLimitReachedPlaceholder = computed(() => {
+    return this.placeholder() === this.limitReachedPlaceholder;
   });
   protected readonly showPlaceholder = computed(() => {
     return !this.currentInput();
@@ -70,8 +96,8 @@ export class App implements AfterViewInit, OnDestroy {
   protected readonly authStatus = this.clerkAuth.status;
   protected readonly promptLabel = computed(() => this.clerkAuth.displayName());
   private readonly maxConsoleEntries = 12;
-  private readonly minLogDelayMs = 260;
-  private readonly maxLogDelayMs = 980;
+  private readonly minLogDelayMs = 174;
+  private readonly maxLogDelayMs = 300;
   private readonly pendingTimers = new Set<number>();
   private hasInitializedTerminal = false;
   private logQueue = Promise.resolve();
@@ -205,7 +231,7 @@ export class App implements AfterViewInit, OnDestroy {
   protected submitValue(rawValue: string): void {
     const value = rawValue.trim();
 
-    if (!value || this.isSending() || this.authStatus() !== 'signed-in') {
+    if (!value || this.isInputBlocked() || this.authStatus() !== 'signed-in') {
       return;
     }
 
@@ -215,7 +241,7 @@ export class App implements AfterViewInit, OnDestroy {
   }
 
   protected focusInput(): void {
-    if (this.authStatus() !== 'signed-in') {
+    if (this.authStatus() !== 'signed-in' || this.isUsageLimitReached()) {
       return;
     }
 
@@ -234,7 +260,7 @@ export class App implements AfterViewInit, OnDestroy {
       next: async (response) => {
         await noiseSequence;
         await this.appendDelayedLogs(this.createChannelResultConsoleLog(response));
-        this.logRemainingUsage(response.remainingUsage);
+        this.setRemainingUsage(response.remainingUsage);
         await this.appendDelayedLogs(this.createRemainingUsageConsoleLog(response.remainingUsage));
         await this.appendDelayedLogs([
           { kind: 'muted', text: this.randomMessage(this.readyMessages) },
@@ -248,7 +274,7 @@ export class App implements AfterViewInit, OnDestroy {
 
         const response = this.getAlertErrorResponse(error);
         if (error.status === 429 && response?.remainingUsage) {
-          this.logRemainingUsage(response.remainingUsage);
+          this.setRemainingUsage(response.remainingUsage);
           await this.appendDelayedLogs([
             {
               kind: 'error',
@@ -275,13 +301,33 @@ export class App implements AfterViewInit, OnDestroy {
 
   private async initializeTerminal(): Promise<void> {
     if (this.hasInitializedTerminal) {
+      this.loadRemainingUsage();
       this.focusInput();
       return;
     }
 
     this.hasInitializedTerminal = true;
+    this.loadRemainingUsage();
     this.focusInput();
     await this.appendDelayedLogs(this.createInitialConsoleLog());
+  }
+
+  private loadRemainingUsage(): void {
+    this.http.get<RemainingUsage>('/api/alert/usage').subscribe({
+      next: (remainingUsage) => this.setRemainingUsage(remainingUsage),
+      error: () => {
+        console.warn('Unable to load alert remaining usage');
+      },
+    });
+  }
+
+  private setRemainingUsage(remainingUsage: RemainingUsage): void {
+    this.remainingUsage.set(remainingUsage);
+    this.logRemainingUsage(remainingUsage);
+
+    if (remainingUsage.remaining === 0) {
+      this.setInputValue('');
+    }
   }
 
   private setInputValue(value: string): void {

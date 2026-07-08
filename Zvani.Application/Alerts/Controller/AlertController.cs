@@ -9,15 +9,24 @@ namespace Zvani.Application.Alerts.Controller;
 [Authorize]
 [ApiController]
 [Route("api/alert")]
-public sealed class AlertController(IAlertService alertService) : ControllerBase
+public sealed class AlertController(
+    IAlertService alertService,
+    IAlertUsageLimiter alertUsageLimiter) : ControllerBase
 {
+    [HttpGet("usage")]
+    public IActionResult Usage()
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        return Ok(alertUsageLimiter.GetRemainingUsage(userId));
+    }
+
     [HttpPost("send")]
     public async Task<IActionResult> Send(SendAlertRequest request, CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub")
-            ?? User.Identity?.Name;
-
+        var userId = GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
             return Unauthorized();
 
@@ -26,5 +35,12 @@ public sealed class AlertController(IAlertService alertService) : ControllerBase
             return StatusCode(StatusCodes.Status429TooManyRequests, response);
 
         return Accepted(response);
+    }
+
+    private string? GetUserId()
+    {
+        return User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")
+            ?? User.Identity?.Name;
     }
 }

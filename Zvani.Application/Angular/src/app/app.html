@@ -65,23 +65,25 @@
                 (mouseup)="syncCursorFromEvent($event)"
                 (scroll)="syncCursorFromEvent($event)"
                 (select)="syncCursorFromEvent($event)"
-                [attr.aria-disabled]="isSending()"
-                [readOnly]="isSending()"
+                [attr.aria-disabled]="isInputBlocked()"
+                [disabled]="isInputBlocked()"
+                [readOnly]="isInputBlocked()"
                 [value]="currentInput()"
                 aria-describedby="terminal-placeholder"
                 autocomplete="off"
-                class="terminal-input h-full w-full bg-transparent py-3 pr-3 text-[#f2f0ea] caret-transparent outline-none"
+                class="terminal-input h-full w-full bg-transparent py-3 pr-3 text-[#f2f0ea] caret-transparent outline-none disabled:text-[#ff8274]"
                 id="terminal-input"
                 spellcheck="false"
               />
               <span
-                [class.opacity-0]="hasSelection()"
+                [class.opacity-0]="hasSelection() || isInputBlocked()"
                 [style.left.px]="cursorOffset()"
                 aria-hidden="true"
                 class="terminal-cursor pointer-events-none absolute top-1/2 h-7 w-[0.65ch] -translate-y-1/2 bg-[#ffa657]"
               ></span>
               @if (showPlaceholder()) {
                 <span
+                  [class.text-[#ff8274]]="isLimitReachedPlaceholder()"
                   class="pointer-events-none absolute left-[1.65ch] top-1/2 max-w-[calc(100%-1.65ch)] -translate-y-1/2 truncate text-[#5f5f5f]"
                   id="terminal-placeholder"
                 >
@@ -94,7 +96,12 @@
           <div
             class="grid gap-2 text-sm font-bold text-[#858585] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4"
           >
-            <span class="wrap-break-word text-[#ffa657]">PRESS ENTER↵ TO SEND ALERT</span>
+            <span
+              [class.text-[#ff8274]]="isLimitReachedSubmitHint()"
+              [class.text-[#ffa657]]="!isLimitReachedSubmitHint()"
+              class="wrap-break-word"
+              >{{ submitHint() }}</span
+            >
           </div>
         </form>
       </div>

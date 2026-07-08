@@ -11,6 +11,22 @@ public sealed class InMemoryAlertUsageLimiter(IOptions<AlertNotificationOptions>
 {
     private readonly ConcurrentDictionary<string, List<DateTimeOffset>> _requestsByUser = new();
 
+    public RemainingUsageResponse GetRemainingUsage(string userId)
+    {
+        var options = notificationOptions.Value;
+        var limit = options.MaxRequestsPerUser;
+        var window = TimeSpan.FromHours(options.RequestWindowHours);
+        var windowStart = DateTimeOffset.UtcNow.Subtract(window);
+        var requests = _requestsByUser.GetOrAdd(userId, _ => []);
+
+        lock (requests)
+        {
+            requests.RemoveAll(requestedAt => requestedAt <= windowStart);
+
+            return CreateUsage(limit, requests, window);
+        }
+    }
+
     public AlertUsageLease TryConsume(string userId)
     {
         var options = notificationOptions.Value;
