@@ -3,12 +3,14 @@ import {
   AfterViewInit,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   OnDestroy,
   signal,
   ViewChild,
 } from '@angular/core';
+import { ClerkAuthService } from './auth/clerk-auth.service';
 
 type ConsoleLog = {
   time: string;
@@ -33,7 +35,6 @@ export class App implements AfterViewInit, OnDestroy {
   protected readonly hasSelection = signal(false);
   protected readonly isSending = signal(false);
   protected readonly consoleLog = signal<ConsoleLog[]>([]);
-  protected readonly promptLabel = 'user';
   protected readonly placeholder = computed(() => {
     if (this.isSending()) {
       return 'sending alert message...';
@@ -57,17 +58,109 @@ export class App implements AfterViewInit, OnDestroy {
 | |_____  |     | |   _   || | |   ||   |
 |_______|  |___|  |__| |__||_|  |__||___|
 `;
+  private readonly clerkAuth = inject(ClerkAuthService);
+  protected readonly authStatus = this.clerkAuth.status;
+  protected readonly promptLabel = computed(() => this.clerkAuth.displayName());
   private readonly maxConsoleEntries = 12;
   private readonly minLogDelayMs = 260;
   private readonly maxLogDelayMs = 980;
   private readonly pendingTimers = new Set<number>();
+  private hasInitializedTerminal = false;
   private logQueue = Promise.resolve();
   private readonly http = inject(HttpClient);
   @ViewChild('terminalInput') private readonly terminalInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('signInMount') private readonly signInMount?: ElementRef<HTMLDivElement>;
+  @ViewChild('userButtonMount') private readonly userButtonMount?: ElementRef<HTMLDivElement>;
+  private readonly bootMessages = [
+    'HTTP REQUEST DETECTED ... wearing a tiny helmet',
+    'BROWSER HAS ENTERED THE CHAT ... suspiciously confident',
+    'TERMINAL BOOTING ... one pixel found the coffee',
+    'CONSOLE OPENED ... no promises were emotionally harmed',
+  ] as const;
+  private readonly warmupMessages = [
+    'SERVICE WAKING UP ... stretching semicolons',
+    'LOADING VIBES ... PLEASE HOLD THE DRAMA',
+    'ALIGNING ANTENNAS ... THEY REFUSE TO ALIGN BACK',
+    'CHECKING WIRES ... MOSTLY FOR PERSONAL GROWTH',
+  ] as const;
+  private readonly promptMessages = [
+    'TYPE MESSAGE AND PRESS ENTER TO SEND',
+    'AWAITING WORDS ... PREFERABLY ON PURPOSE',
+    'READY FOR ALERT TEXT ... MAKE IT BRIEF, MAKE IT LOUD',
+    'INPUT PORT OPEN ... FEED IT A SENTENCE',
+  ] as const;
+  private readonly sendingMessages = [
+    'PACKING ALERT INTO A VERY SMALL ENVELOPE ...',
+    'ASKING /api/alert/send IF IT IS READY FOR RESPONSIBILITY ...',
+    'NEGOTIATING WITH THE OUTBOX ... IT HAS DEMANDS',
+    'POLISHING PAYLOAD ... NOW 14% MORE OFFICIAL',
+    'TELLING THE NETWORK TO ACT NATURAL ...',
+    'CONVERTING PANIC INTO STRUCTURED JSON ...',
+  ] as const;
+  private readonly emailSuccessMessages = [
+    'EMAIL SENT ... THE INBOX HAS BEEN NOTIFIED WITH STYLE',
+    'EMAIL DELIVERED ... TINY CELEBRATION IN PORT 443',
+    'EMAIL SUCCESS ... THE SUBJECT LINE DID ITS JOB',
+    'EMAIL MADE IT ... PLEASE PRETEND THIS WAS EASY',
+  ] as const;
+  private readonly emailFailureMessages = [
+    'EMAIL FAILED ... THE INBOX LOOKED AWAY AT THE WRONG TIME',
+    'EMAIL DID NOT SEND ... OUTBOX IS DOING PERFORMANCE ART',
+    'EMAIL FAILURE ... SMTP SHRUGGED IN A TECHNICAL WAY',
+    'EMAIL STALLED ... THE ENVELOPE GOT STAGE FRIGHT',
+  ] as const;
+  private readonly smsSuccessMessages = [
+    'SMS SENT ... POCKET BUZZ PROBABLY INCOMING',
+    'SMS DELIVERED ... THE TINY TEXT TRAIN LEFT THE STATION',
+    'SMS SUCCESS ... THUMBS MAY NOW BE ALERTED',
+    'SMS MADE IT ... SOMEWHERE A PHONE FEELS IMPORTANT',
+  ] as const;
+  private readonly smsFailureMessages = [
+    'SMS FAILED ... THE PHONE VIBRATION UNION DECLINED',
+    'SMS DID NOT SEND ... CARRIER SAID MAYBE LATER',
+    'SMS FAILURE ... TEXT MESSAGE TRIPPED OVER A CLOUD',
+    'SMS STALLED ... THE POCKET BUZZ HAS BEEN POSTPONED',
+  ] as const;
+  private readonly readyMessages = [
+    'TYPE ANOTHER MESSAGE TO BOTHER THE INTERNET AGAIN',
+    'READY AGAIN ... THE INTERNET HAS BEEN WARNED',
+    'ANOTHER ALERT MAY NOW APPROACH THE BENCH',
+    'QUEUE IS CLEAR ... TRY NOT TO GIVE IT A PERSONALITY',
+  ] as const;
+  private readonly alertFailureMessages = [
+    'ALERT PIPE SAID NO. RUDE.',
+    'REQUEST FAILED ... THE SERVER CHOSE MYSTERY',
+    'ALERT DID NOT LAUNCH ... CONTROL TOWER IS SQUINTING',
+    'NETWORK SAID ABSOLUTELY NOT ... VERY DRAMATIC',
+  ] as const;
+
+  constructor() {
+    effect(() => {
+      const status = this.authStatus();
+
+      queueMicrotask(() => {
+        if (status === 'signed-in') {
+          const userButtonMount = this.userButtonMount?.nativeElement;
+          if (userButtonMount) {
+            void this.clerkAuth.mountUserButton(userButtonMount);
+          }
+
+          void this.initializeTerminal();
+          return;
+        }
+
+        if (status === 'signed-out') {
+          const signInMount = this.signInMount?.nativeElement;
+          if (signInMount) {
+            void this.clerkAuth.mountSignIn(signInMount);
+          }
+        }
+      });
+    });
+  }
 
   ngAfterViewInit(): void {
-    this.focusInput();
-    void this.appendDelayedLogs(this.createInitialConsoleLog());
+    void this.clerkAuth.load();
   }
 
   ngOnDestroy(): void {
@@ -98,7 +191,7 @@ export class App implements AfterViewInit, OnDestroy {
   protected submitValue(rawValue: string): void {
     const value = rawValue.trim();
 
-    if (!value || this.isSending()) {
+    if (!value || this.isSending() || this.authStatus() !== 'signed-in') {
       return;
     }
 
@@ -108,6 +201,10 @@ export class App implements AfterViewInit, OnDestroy {
   }
 
   protected focusInput(): void {
+    if (this.authStatus() !== 'signed-in') {
+      return;
+    }
+
     queueMicrotask(() => {
       this.terminalInput?.nativeElement.focus();
       this.syncCursor();
@@ -142,6 +239,17 @@ export class App implements AfterViewInit, OnDestroy {
         this.focusInput();
       },
     });
+  }
+
+  private async initializeTerminal(): Promise<void> {
+    if (this.hasInitializedTerminal) {
+      this.focusInput();
+      return;
+    }
+
+    this.hasInitializedTerminal = true;
+    this.focusInput();
+    await this.appendDelayedLogs(this.createInitialConsoleLog());
   }
 
   private setInputValue(value: string): void {
@@ -281,76 +389,4 @@ export class App implements AfterViewInit, OnDestroy {
       hour12: false,
     }).format(date);
   }
-
-  private readonly bootMessages = [
-    'HTTP REQUEST DETECTED ... wearing a tiny helmet',
-    'BROWSER HAS ENTERED THE CHAT ... suspiciously confident',
-    'TERMINAL BOOTING ... one pixel found the coffee',
-    'CONSOLE OPENED ... no promises were emotionally harmed',
-  ] as const;
-
-  private readonly warmupMessages = [
-    'SERVICE WAKING UP ... stretching semicolons',
-    'LOADING VIBES ... PLEASE HOLD THE DRAMA',
-    'ALIGNING ANTENNAS ... THEY REFUSE TO ALIGN BACK',
-    'CHECKING WIRES ... MOSTLY FOR PERSONAL GROWTH',
-  ] as const;
-
-  private readonly promptMessages = [
-    'TYPE MESSAGE AND PRESS ENTER TO SEND',
-    'AWAITING WORDS ... PREFERABLY ON PURPOSE',
-    'READY FOR ALERT TEXT ... MAKE IT BRIEF, MAKE IT LOUD',
-    'INPUT PORT OPEN ... FEED IT A SENTENCE',
-  ] as const;
-
-  private readonly sendingMessages = [
-    'PACKING ALERT INTO A VERY SMALL ENVELOPE ...',
-    'ASKING /api/alert/send IF IT IS READY FOR RESPONSIBILITY ...',
-    'NEGOTIATING WITH THE OUTBOX ... IT HAS DEMANDS',
-    'POLISHING PAYLOAD ... NOW 14% MORE OFFICIAL',
-    'TELLING THE NETWORK TO ACT NATURAL ...',
-    'CONVERTING PANIC INTO STRUCTURED JSON ...',
-  ] as const;
-
-  private readonly emailSuccessMessages = [
-    'EMAIL SENT ... THE INBOX HAS BEEN NOTIFIED WITH STYLE',
-    'EMAIL DELIVERED ... TINY CELEBRATION IN PORT 443',
-    'EMAIL SUCCESS ... THE SUBJECT LINE DID ITS JOB',
-    'EMAIL MADE IT ... PLEASE PRETEND THIS WAS EASY',
-  ] as const;
-
-  private readonly emailFailureMessages = [
-    'EMAIL FAILED ... THE INBOX LOOKED AWAY AT THE WRONG TIME',
-    'EMAIL DID NOT SEND ... OUTBOX IS DOING PERFORMANCE ART',
-    'EMAIL FAILURE ... SMTP SHRUGGED IN A TECHNICAL WAY',
-    'EMAIL STALLED ... THE ENVELOPE GOT STAGE FRIGHT',
-  ] as const;
-
-  private readonly smsSuccessMessages = [
-    'SMS SENT ... POCKET BUZZ PROBABLY INCOMING',
-    'SMS DELIVERED ... THE TINY TEXT TRAIN LEFT THE STATION',
-    'SMS SUCCESS ... THUMBS MAY NOW BE ALERTED',
-    'SMS MADE IT ... SOMEWHERE A PHONE FEELS IMPORTANT',
-  ] as const;
-
-  private readonly smsFailureMessages = [
-    'SMS FAILED ... THE PHONE VIBRATION UNION DECLINED',
-    'SMS DID NOT SEND ... CARRIER SAID MAYBE LATER',
-    'SMS FAILURE ... TEXT MESSAGE TRIPPED OVER A CLOUD',
-    'SMS STALLED ... THE POCKET BUZZ HAS BEEN POSTPONED',
-  ] as const;
-
-  private readonly readyMessages = [
-    'TYPE ANOTHER MESSAGE TO BOTHER THE INTERNET AGAIN',
-    'READY AGAIN ... THE INTERNET HAS BEEN WARNED',
-    'ANOTHER ALERT MAY NOW APPROACH THE BENCH',
-    'QUEUE IS CLEAR ... TRY NOT TO GIVE IT A PERSONALITY',
-  ] as const;
-
-  private readonly alertFailureMessages = [
-    'ALERT PIPE SAID NO. RUDE.',
-    'REQUEST FAILED ... THE SERVER CHOSE MYSTERY',
-    'ALERT DID NOT LAUNCH ... CONTROL TOWER IS SQUINTING',
-    'NETWORK SAID ABSOLUTELY NOT ... VERY DRAMATIC',
-  ] as const;
 }

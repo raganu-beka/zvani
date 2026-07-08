@@ -1,10 +1,13 @@
 using Azure.Communication.Email;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Twilio.Clients;
 using Zvani.Application.Alerts.Configuration;
 using Zvani.Application.Alerts.Interfaces;
 using Zvani.Application.Alerts.Services;
+using Zvani.Application.Authentication;
+using Zvani.Application.Authentication.Configurations;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -16,6 +19,19 @@ builder.Services.AddSerilog();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddOptions<ClerkAuthenticationOptions>()
+    .Bind(builder.Configuration.GetRequiredSection(ClerkAuthenticationOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services
+    .AddAuthentication(ClerkAuthenticationDefaults.AuthenticationScheme)
+    .AddScheme<AuthenticationSchemeOptions, ClerkAuthenticationHandler>(
+        ClerkAuthenticationDefaults.AuthenticationScheme,
+        options => { });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddOptions<AzureEmailOptions>()
     .Bind(builder.Configuration.GetRequiredSection(AzureEmailOptions.SectionName))
@@ -60,6 +76,9 @@ app.UseHttpsRedirection();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
