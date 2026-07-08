@@ -38,13 +38,113 @@ export class ClerkAuthService {
     element.replaceChildren();
     this.clerk?.mountSignIn(element, {
       routing: 'hash',
+      appearance: {
+        variables: {
+          colorPrimary: '#ffa657',
+          colorBackground: '#18181c',
+          colorInputBackground: '#111111',
+          colorInputText: '#f2f0ea',
+          colorText: '#f2f0ea',
+          colorTextSecondary: '#9a9892',
+          borderRadius: '6px',
+          fontFamily:
+            'SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+        },
+        elements: {
+          rootBox: {
+            width: '100%',
+          },
+          cardBox: {
+            width: '100%',
+            boxShadow: 'none',
+          },
+          card: {
+            width: '100%',
+            backgroundColor: '#18181c',
+            border: '1px solid #35353a',
+            boxShadow: '0 24px 80px rgba(0, 0, 0, 0.45)',
+          },
+          headerTitle: {
+            color: '#f2f0ea',
+            fontSize: '1.25rem',
+            fontWeight: '800',
+            letterSpacing: '0',
+          },
+          headerSubtitle: {
+            color: '#9a9892',
+            fontWeight: '700',
+          },
+          socialButtonsBlockButton: {
+            backgroundColor: '#202026',
+            borderColor: '#383840',
+            color: '#f2f0ea',
+            fontWeight: '800',
+          },
+          dividerLine: {
+            backgroundColor: '#383840',
+          },
+          dividerText: {
+            color: '#9a9892',
+            fontWeight: '800',
+          },
+          formFieldLabel: {
+            color: '#f2f0ea',
+            fontWeight: '800',
+          },
+          formFieldInput: {
+            backgroundColor: '#111111',
+            borderColor: '#3f3f45',
+            color: '#f2f0ea',
+            fontWeight: '700',
+          },
+          formButtonPrimary: {
+            backgroundColor: '#ffa657',
+            color: '#111111',
+            fontWeight: '900',
+          },
+          footer: {
+            backgroundColor: '#202026',
+            borderTop: '1px solid #35353a',
+          },
+          footerActionText: {
+            color: '#9a9892',
+            fontWeight: '800',
+          },
+          footerActionLink: {
+            color: '#ffa657',
+            fontWeight: '900',
+          },
+        },
+      },
     });
   }
 
   async mountUserButton(element: HTMLDivElement): Promise<void> {
     await this.load();
     element.replaceChildren();
-    this.clerk?.mountUserButton(element);
+    this.clerk?.mountUserButton(element, {
+      userProfileMode: 'modal',
+      appearance: {
+        variables: {
+          colorPrimary: '#ffa657',
+          colorBackground: '#111111',
+          colorText: '#f2f0ea',
+          colorTextSecondary: '#858585',
+          borderRadius: '4px',
+        },
+        elements: {
+          userButtonAvatarBox: {
+            width: '2.5rem',
+            height: '2.5rem',
+          },
+          userButtonPopoverCard: {
+            backgroundColor: '#111111',
+            border: '1px solid #3d3d3d',
+            boxShadow: '0 18px 48px rgba(0, 0, 0, 0.5)',
+          },
+        },
+      },
+    });
   }
 
   private async loadClerk(): Promise<void> {
@@ -115,10 +215,18 @@ export class ClerkAuthService {
 
     this.status.set(clerk.isSignedIn ? 'signed-in' : 'signed-out');
     this.displayName.set(
-      clerk.user?.username ??
-        clerk.user?.firstName ??
-        clerk.user?.primaryEmailAddress?.emailAddress ??
-        'user',
+      this.formatDisplayName(
+        clerk.user?.username ??
+          clerk.user?.firstName ??
+          clerk.user?.primaryEmailAddress?.emailAddress,
+      ),
     );
+  }
+
+  private formatDisplayName(value?: string | null): string {
+    const firstToken = value?.trim().split(/\s+/)[0]?.split('@')[0] ?? '';
+    const normalized = firstToken.toLocaleLowerCase();
+
+    return normalized || 'user';
   }
 }

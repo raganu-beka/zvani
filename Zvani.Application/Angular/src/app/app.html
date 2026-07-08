@@ -2,107 +2,134 @@
   (click)="focusInput()"
   class="terminal-field h-dvh overflow-hidden bg-[#111111] px-5 py-5 font-mono text-[#d6d2ca] selection:bg-[#ffa657] selection:text-[#111111] sm:px-10 sm:py-8 lg:px-16 lg:py-10"
 >
+  @if (authStatus() === 'signed-in') {
+    <aside
+      (click)="$event.stopPropagation()"
+      aria-label="User account"
+      class="user-banner fixed right-5 top-5 z-30 flex max-w-[calc(100vw-2.5rem)] items-center gap-3 border border-[#3d3d3d] bg-[#111111]/90 px-3 py-2 shadow-[0_18px_44px_rgba(0,0,0,0.34)] backdrop-blur-sm sm:right-10 sm:top-8 lg:right-16 lg:top-10"
+    >
+      <div class="min-w-0 text-right leading-tight">
+        <p class="truncate text-sm font-bold text-[#ffa657] sm:text-base">
+          {{ promptLabel() }}&#64;zvani
+        </p>
+        <p class="text-[0.65rem] font-bold uppercase text-[#858585]">account / log out</p>
+      </div>
+      <div class="shrink-0" #userButtonMount></div>
+    </aside>
+  }
+
   <section class="relative z-10 h-full max-w-5xl">
     @if (authStatus() === 'signed-in') {
-      <div class="absolute right-0 top-0 z-20" #userButtonMount></div>
-
-    <div
-      class="absolute left-0 right-0 top-0 max-h-[38dvh] overflow-hidden pt-2 text-xs font-bold text-[#807f80] sm:pt-4 sm:text-sm lg:text-base">
-      @for (entry of consoleLog(); track entry.time + entry.text) {
-        <p
-          [class.text-[#d6d2ca]]="entry.kind === 'input'"
-          [class.text-[#ff8274]]="entry.kind === 'error'"
-          [class.text-[#ffa657]]="entry.kind === 'success'"
-          class="terminal-line mb-2 grid gap-3 leading-tight sm:mb-3 sm:grid-cols-[6.5rem_1fr]"
-        >
-          <span class="tabular-nums">[{{ entry.time }}]</span>
-          <span class="truncate">{{ entry.text }}</span>
-        </p>
-      }
-    </div>
-
-    <div class="absolute left-0 top-[56%] w-full max-w-3xl -translate-y-1/2">
-      <pre
-        aria-label="zvani ASCII art"
-        class="hidden whitespace-pre text-[0.5rem] font-semibold leading-[1.02] text-[#858585] sm:block md:text-[0.7rem]"
-      >{{ asciiArt }}</pre>
-
-      <form
-        (submit)="$event.preventDefault(); submitInput()"
-        aria-label="zvani terminal"
-        class="mt-5 grid gap-3 sm:mt-7"
+      <div
+        class="absolute left-0 right-0 top-0 max-h-[38dvh] overflow-hidden pt-2 text-xs font-bold text-[#807f80] sm:pt-4 sm:text-sm lg:text-base"
       >
-        <label class="sr-only" for="terminal-input">Alert message</label>
-        <div
-          class="flex min-h-14 max-w-full items-center overflow-hidden border-b border-[#4a4a4a] text-xl sm:text-2xl">
-          <span class="shrink-0 whitespace-nowrap font-bold text-[#ffa657]">{{ promptLabel() }}&#64;zvani</span>
-          <span class="mx-3 shrink-0 whitespace-nowrap text-[#6b6b6b]">$</span>
-          <span class="terminal-input-frame relative h-14 min-w-0 flex-1 overflow-hidden">
-            <input
-              #terminalInput
-              (click)="syncCursorFromEvent($event)"
-              (input)="updateInput($event)"
-              (keydown.enter)="$event.preventDefault(); submitValue($any($event.target).value)"
-              (keyup)="syncCursorFromEvent($event)"
-              (mouseup)="syncCursorFromEvent($event)"
-              (scroll)="syncCursorFromEvent($event)"
-              (select)="syncCursorFromEvent($event)"
-              [attr.aria-disabled]="isSending()"
-              [readOnly]="isSending()"
-              [value]="currentInput()"
-              aria-describedby="terminal-placeholder"
-              autocomplete="off"
-              class="terminal-input h-full w-full bg-transparent py-3 pr-3 text-[#f2f0ea] caret-transparent outline-none"
-              id="terminal-input"
-              spellcheck="false"
-            />
-            <span
-              [class.opacity-0]="hasSelection()"
-              [style.left.px]="cursorOffset()"
-              aria-hidden="true"
-              class="terminal-cursor pointer-events-none absolute top-1/2 h-7 w-[0.65ch] -translate-y-1/2 bg-[#ffa657]"
-            ></span>
-            @if (showPlaceholder()) {
-              <span class="pointer-events-none absolute left-[1.65ch] top-1/2 max-w-[calc(100%-1.65ch)] -translate-y-1/2 truncate text-[#5f5f5f]"
-                    id="terminal-placeholder">
-                {{ placeholder() }}
-              </span>
-            }
-          </span>
-        </div>
+        @for (entry of consoleLog(); track entry.time + entry.text) {
+          <p
+            [class.text-[#d6d2ca]]="entry.kind === 'input'"
+            [class.text-[#ff8274]]="entry.kind === 'error'"
+            [class.text-[#ffa657]]="entry.kind === 'success'"
+            class="terminal-line mb-2 grid gap-3 leading-tight sm:mb-3 sm:grid-cols-[6.5rem_1fr]"
+          >
+            <span class="tabular-nums">[{{ entry.time }}]</span>
+            <span class="truncate">{{ entry.text }}</span>
+          </p>
+        }
+      </div>
 
-        <div
-          class="grid gap-2 text-sm font-bold text-[#858585] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4">
-          <span class="wrap-break-word text-[#ffa657]">PRESS ENTER↵ TO SEND ALERT</span>
-        </div>
-      </form>
-    </div>
-
-    <p class="absolute bottom-0 left-0 text-xs font-bold text-[#ffa657] sm:text-sm">
-      alert responsibly, or at least confidently :)
-    </p>
-    } @else {
-      <div class="absolute left-0 top-1/2 w-full max-w-md -translate-y-1/2">
+      <div class="absolute left-0 top-[56%] w-full max-w-3xl -translate-y-1/2">
         <pre
           aria-label="zvani ASCII art"
           class="hidden whitespace-pre text-[0.5rem] font-semibold leading-[1.02] text-[#858585] sm:block md:text-[0.7rem]"
-        >{{ asciiArt }}</pre>
+          >{{ asciiArt }}</pre>
 
-        @if (authStatus() === 'loading') {
-          <p class="mt-7 text-sm font-bold uppercase tracking-normal text-[#858585]">
-            loading secure session...
-          </p>
-        } @else if (authStatus() === 'missing-config') {
-          <div class="mt-7 border-l border-[#ff8274] pl-4 text-sm font-bold text-[#ff8274]">
-            Clerk publishable key is not configured.
+        <form
+          (submit)="$event.preventDefault(); submitInput()"
+          aria-label="zvani terminal"
+          class="mt-5 grid gap-3 sm:mt-7"
+        >
+          <label class="sr-only" for="terminal-input">Alert message</label>
+          <div
+            class="flex min-h-14 max-w-full items-center overflow-hidden border-b border-[#4a4a4a] text-xl sm:text-2xl"
+          >
+            <span class="shrink-0 whitespace-nowrap font-bold text-[#ffa657]"
+              >{{ promptLabel() }}&#64;zvani</span
+            >
+            <span class="mx-3 shrink-0 whitespace-nowrap text-[#6b6b6b]">$</span>
+            <span class="terminal-input-frame relative h-14 min-w-0 flex-1 overflow-hidden">
+              <input
+                #terminalInput
+                (click)="syncCursorFromEvent($event)"
+                (input)="updateInput($event)"
+                (keydown.enter)="$event.preventDefault(); submitValue($any($event.target).value)"
+                (keyup)="syncCursorFromEvent($event)"
+                (mouseup)="syncCursorFromEvent($event)"
+                (scroll)="syncCursorFromEvent($event)"
+                (select)="syncCursorFromEvent($event)"
+                [attr.aria-disabled]="isSending()"
+                [readOnly]="isSending()"
+                [value]="currentInput()"
+                aria-describedby="terminal-placeholder"
+                autocomplete="off"
+                class="terminal-input h-full w-full bg-transparent py-3 pr-3 text-[#f2f0ea] caret-transparent outline-none"
+                id="terminal-input"
+                spellcheck="false"
+              />
+              <span
+                [class.opacity-0]="hasSelection()"
+                [style.left.px]="cursorOffset()"
+                aria-hidden="true"
+                class="terminal-cursor pointer-events-none absolute top-1/2 h-7 w-[0.65ch] -translate-y-1/2 bg-[#ffa657]"
+              ></span>
+              @if (showPlaceholder()) {
+                <span
+                  class="pointer-events-none absolute left-[1.65ch] top-1/2 max-w-[calc(100%-1.65ch)] -translate-y-1/2 truncate text-[#5f5f5f]"
+                  id="terminal-placeholder"
+                >
+                  {{ placeholder() }}
+                </span>
+              }
+            </span>
           </div>
-        } @else if (authStatus() === 'error') {
-          <div class="mt-7 border-l border-[#ff8274] pl-4 text-sm font-bold text-[#ff8274]">
-            Unable to load Clerk sign in.
+
+          <div
+            class="grid gap-2 text-sm font-bold text-[#858585] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4"
+          >
+            <span class="wrap-break-word text-[#ffa657]">PRESS ENTER↵ TO SEND ALERT</span>
           </div>
-        } @else {
-          <div class="mt-7" #signInMount></div>
-        }
+        </form>
+      </div>
+
+      <p class="absolute bottom-0 left-0 text-xs font-bold text-[#ffa657] sm:text-sm">
+        alert responsibly, or at least confidently :)
+      </p>
+    } @else {
+      <div class="auth-stage fixed inset-0 z-10 px-5 py-8">
+        <div class="auth-panel w-full max-w-[28rem]">
+          <pre
+            aria-label="zvani ASCII art"
+            class="auth-logo mb-6 whitespace-pre text-[0.5rem] font-semibold leading-[1.02] text-[#858585] sm:text-[0.7rem]"
+            >{{ asciiArt }}</pre>
+
+          @if (authStatus() === 'loading') {
+            <p class="auth-state-message text-center text-sm font-bold uppercase text-[#858585]">
+              loading secure session...
+            </p>
+          } @else if (authStatus() === 'missing-config') {
+            <div
+              class="auth-state-message border border-[#ff8274] px-4 py-3 text-sm font-bold text-[#ff8274]"
+            >
+              Clerk publishable key is not configured.
+            </div>
+          } @else if (authStatus() === 'error') {
+            <div
+              class="auth-state-message border border-[#ff8274] px-4 py-3 text-sm font-bold text-[#ff8274]"
+            >
+              Unable to load Clerk sign in.
+            </div>
+          } @else {
+            <div class="auth-clerk-mount" #signInMount></div>
+          }
+        </div>
       </div>
     }
   </section>
