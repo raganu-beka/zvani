@@ -16,7 +16,8 @@ type ConsoleLog = {
 };
 
 type SendAlertResponse = {
-  message: string;
+  emailSucceeded: boolean;
+  smsSucceeded: boolean;
 };
 
 @Component({
@@ -121,7 +122,7 @@ export class App implements AfterViewInit {
         await this.appendDelayedLogs([
           {
             kind: 'success',
-            text: `${response.message} TINY SIREN DEPLOYED`,
+            text: `EMAIL ${this.formatChannelStatus(response.emailSucceeded)} / SMS ${this.formatChannelStatus(response.smsSucceeded)}`,
           },
           {
             kind: 'muted',
@@ -144,6 +145,10 @@ export class App implements AfterViewInit {
         this.focusInput();
       },
     });
+  }
+
+  private formatChannelStatus(succeeded: boolean): string {
+    return succeeded ? 'SENT' : 'FAILED';
   }
 
   private setInputValue(value: string): void {

@@ -1,6 +1,7 @@
 using Azure.Communication.Email;
 using Microsoft.Extensions.Options;
 using Serilog;
+using Twilio.Clients;
 using Zvani.Application.Alerts.Configuration;
 using Zvani.Application.Alerts.Interfaces;
 using Zvani.Application.Alerts.Services;
@@ -26,12 +27,23 @@ builder.Services.AddOptions<AlertNotificationOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddOptions<TwilioOptions>()
+    .Bind(builder.Configuration.GetRequiredSection(TwilioOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<AzureEmailOptions>>().Value;
     return new EmailClient(options.ConnectionString);
 });
+builder.Services.AddSingleton<ITwilioRestClient>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<TwilioOptions>>().Value;
+    return new TwilioRestClient(options.AccountSid, options.AuthToken);
+});
 builder.Services.AddScoped<IEmailSender, AzureEmailSender>();
+builder.Services.AddScoped<ISmsSender, TwilioSmsSender>();
 builder.Services.AddScoped<IAlertService, AlertService>();
 
 var app = builder.Build();

@@ -8,5 +8,7 @@ public sealed class AlertNotificationOptions
 
     [Required] [EmailAddress] public string ReceiverEmail { get; init; } = string.Empty;
 
+    [Required] public string ReceiverPhoneNumber { get; init; } = string.Empty;
+
     [Required] public string DefaultSubject { get; init; } = string.Empty;
 }

@@ -7,6 +7,7 @@ namespace Zvani.Application.Alerts.Services;
 
 public sealed class AlertService(
     IEmailSender emailSender,
+    ISmsSender smsSender,
     IOptions<AlertNotificationOptions> notificationOptions,
     ILogger<AlertService> logger) : IAlertService
 {
@@ -14,14 +15,60 @@ public sealed class AlertService(
     {
         logger.LogInformation("Received alert request: {@Request}", request);
 
-        var receiverEmail = notificationOptions.Value.ReceiverEmail;
+        var options = notificationOptions.Value;
         var message = string.IsNullOrWhiteSpace(request.Message)
             ? "Alert notification received."
             : request.Message;
 
-        await emailSender.SendAsync(receiverEmail, notificationOptions.Value.DefaultSubject, message,
-            cancellationToken);
+        var emailTask = SendEmailAsync(options.ReceiverEmail, options.DefaultSubject, message, cancellationToken);
+        var smsTask = SendSmsAsync(options.ReceiverPhoneNumber, message, cancellationToken);
 
-        return new SendAlertResponse("Alert request accepted.");
+        await Task.WhenAll(emailTask, smsTask);
+
+        return new SendAlertResponse(emailTask.Result, smsTask.Result);
+    }
+
+    private async Task<bool> SendEmailAsync(
+        string receiverEmail,
+        string subject,
+        string body,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await emailSender.SendAsync(receiverEmail, subject, body, cancellationToken);
+            logger.LogInformation("Alert email delivery succeeded for {ReceiverEmail}", receiverEmail);
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Alert email delivery canceled for {ReceiverEmail}", receiverEmail);
+            return false;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Alert email delivery failed for {ReceiverEmail}", receiverEmail);
+            return false;
+        }
+    }
+
+    private async Task<bool> SendSmsAsync(string receiverPhoneNumber, string body, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await smsSender.SendAsync(receiverPhoneNumber, body, cancellationToken);
+            logger.LogInformation("Alert SMS delivery succeeded for {ReceiverPhoneNumber}", receiverPhoneNumber);
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Alert SMS delivery canceled for {ReceiverPhoneNumber}", receiverPhoneNumber);
+            return false;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Alert SMS delivery failed for {ReceiverPhoneNumber}", receiverPhoneNumber);
+            return false;
+        }
     }
 }
