@@ -5,6 +5,7 @@ import {
   computed,
   ElementRef,
   inject,
+  OnDestroy,
   signal,
   ViewChild,
 } from '@angular/core';
@@ -25,13 +26,13 @@ type SendAlertResponse = {
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App implements AfterViewInit {
+export class App implements AfterViewInit, OnDestroy {
   protected readonly hasSent = signal(false);
   protected readonly currentInput = signal('');
   protected readonly cursorOffset = signal(0);
   protected readonly hasSelection = signal(false);
   protected readonly isSending = signal(false);
-  protected readonly consoleLog = signal<ConsoleLog[]>(this.createInitialConsoleLog());
+  protected readonly consoleLog = signal<ConsoleLog[]>([]);
   protected readonly promptLabel = 'user';
   protected readonly placeholder = computed(() => {
     if (this.isSending()) {
@@ -57,13 +58,24 @@ export class App implements AfterViewInit {
 |_______|  |___|  |__| |__||_|  |__||___|
 `;
   private readonly maxConsoleEntries = 12;
-  private readonly minLogDelayMs = 107;
-  private readonly maxLogDelayMs = 308;
+  private readonly minLogDelayMs = 260;
+  private readonly maxLogDelayMs = 980;
+  private readonly pendingTimers = new Set<number>();
+  private logQueue = Promise.resolve();
   private readonly http = inject(HttpClient);
   @ViewChild('terminalInput') private readonly terminalInput?: ElementRef<HTMLInputElement>;
 
   ngAfterViewInit(): void {
     this.focusInput();
+    void this.appendDelayedLogs(this.createInitialConsoleLog());
+  }
+
+  ngOnDestroy(): void {
+    for (const timerId of this.pendingTimers) {
+      window.clearTimeout(timerId);
+    }
+
+    this.pendingTimers.clear();
   }
 
   protected updateInput(event: Event): void {
@@ -90,10 +102,9 @@ export class App implements AfterViewInit {
       return;
     }
 
-    this.appendLog('input', `$ ${value}`);
     this.setInputValue('');
     this.focusInput();
-    this.sendAlert(value);
+    void this.sendAlert(value);
   }
 
   protected focusInput(): void {
@@ -103,31 +114,17 @@ export class App implements AfterViewInit {
     });
   }
 
-  private sendAlert(message: string): void {
+  private async sendAlert(message: string): Promise<void> {
     this.isSending.set(true);
-    const noiseSequence = this.appendDelayedLogs([
-      {
-        kind: 'noise',
-        text: 'PACKING ALERT INTO A VERY SMALL ENVELOPE ...',
-      },
-      {
-        kind: 'noise',
-        text: 'ASKING /api/alert/send IF IT IS READY FOR RESPONSIBILITY ...',
-      },
-    ]);
+    await this.appendDelayedLogs([{ kind: 'input', text: `$ ${message}` }]);
+    const noiseSequence = this.appendDelayedLogs(this.createSendingConsoleLog());
 
     this.http.post<SendAlertResponse>('/api/alert/send', { message }).subscribe({
       next: async (response) => {
         await noiseSequence;
+        await this.appendDelayedLogs(this.createChannelResultConsoleLog(response));
         await this.appendDelayedLogs([
-          {
-            kind: 'success',
-            text: `EMAIL ${this.formatChannelStatus(response.emailSucceeded)} / SMS ${this.formatChannelStatus(response.smsSucceeded)}`,
-          },
-          {
-            kind: 'muted',
-            text: 'TYPE ANOTHER MESSAGE TO BOTHER THE INTERNET AGAIN',
-          },
+          { kind: 'muted', text: this.randomMessage(this.readyMessages) },
         ]);
         this.hasSent.set(true);
         this.isSending.set(false);
@@ -138,17 +135,13 @@ export class App implements AfterViewInit {
         await this.appendDelayedLogs([
           {
             kind: 'error',
-            text: 'ALERT PIPE SAID NO. RUDE.',
+            text: this.randomMessage(this.alertFailureMessages),
           },
         ]);
         this.isSending.set(false);
         this.focusInput();
       },
     });
-  }
-
-  private formatChannelStatus(succeeded: boolean): string {
-    return succeeded ? 'SENT' : 'FAILED';
   }
 
   private setInputValue(value: string): void {
@@ -200,10 +193,16 @@ export class App implements AfterViewInit {
   private async appendDelayedLogs(
     entries: Array<Pick<ConsoleLog, 'kind' | 'text'>>,
   ): Promise<void> {
-    for (const entry of entries) {
-      await this.wait(this.randomLogDelay());
-      this.appendLog(entry.kind, entry.text);
-    }
+    const appendEntries = async () => {
+      for (const entry of entries) {
+        await this.wait(this.randomLogDelay());
+        this.appendLog(entry.kind, entry.text);
+      }
+    };
+
+    this.logQueue = this.logQueue.then(appendEntries, appendEntries);
+
+    return this.logQueue;
   }
 
   private randomLogDelay(): number {
@@ -214,34 +213,64 @@ export class App implements AfterViewInit {
 
   private wait(milliseconds: number): Promise<void> {
     return new Promise((resolve) => {
-      window.setTimeout(resolve, milliseconds);
+      const timerId = window.setTimeout(() => {
+        this.pendingTimers.delete(timerId);
+        resolve();
+      }, milliseconds);
+
+      this.pendingTimers.add(timerId);
     });
   }
 
-  private createInitialConsoleLog(): ConsoleLog[] {
-    const now = new Date();
-
+  private createInitialConsoleLog(): Array<Pick<ConsoleLog, 'kind' | 'text'>> {
     return [
       {
-        time: this.formatTime(this.addSeconds(now, -7)),
         kind: 'muted',
-        text: 'HTTP REQUEST DETECTED ... probably yours',
+        text: this.randomMessage(this.bootMessages),
       },
       {
-        time: this.formatTime(this.addSeconds(now, -4)),
         kind: 'muted',
-        text: 'SERVICE WAKING UP ... stretching semicolons',
+        text: this.randomMessage(this.warmupMessages),
       },
       {
-        time: this.formatTime(now),
         kind: 'muted',
-        text: 'TYPE MESSAGE AND PRESS ENTER TO SEND',
+        text: this.randomMessage(this.promptMessages),
       },
     ];
   }
 
-  private addSeconds(date: Date, seconds: number): Date {
-    return new Date(date.getTime() + seconds * 1000);
+  private createSendingConsoleLog(): Array<Pick<ConsoleLog, 'kind' | 'text'>> {
+    return this.randomMessages(this.sendingMessages, 2).map((text) => ({
+      kind: 'noise',
+      text,
+    }));
+  }
+
+  private createChannelResultConsoleLog(
+    response: SendAlertResponse,
+  ): Array<Pick<ConsoleLog, 'kind' | 'text'>> {
+    return [
+      {
+        kind: response.emailSucceeded ? 'success' : 'error',
+        text: this.randomMessage(
+          response.emailSucceeded ? this.emailSuccessMessages : this.emailFailureMessages,
+        ),
+      },
+      {
+        kind: response.smsSucceeded ? 'success' : 'error',
+        text: this.randomMessage(
+          response.smsSucceeded ? this.smsSuccessMessages : this.smsFailureMessages,
+        ),
+      },
+    ];
+  }
+
+  private randomMessage(messages: readonly string[]): string {
+    return messages[Math.floor(Math.random() * messages.length)];
+  }
+
+  private randomMessages(messages: readonly string[], count: number): string[] {
+    return [...messages].sort(() => Math.random() - 0.5).slice(0, count);
   }
 
   private formatTime(date: Date): string {
@@ -252,4 +281,76 @@ export class App implements AfterViewInit {
       hour12: false,
     }).format(date);
   }
+
+  private readonly bootMessages = [
+    'HTTP REQUEST DETECTED ... wearing a tiny helmet',
+    'BROWSER HAS ENTERED THE CHAT ... suspiciously confident',
+    'TERMINAL BOOTING ... one pixel found the coffee',
+    'CONSOLE OPENED ... no promises were emotionally harmed',
+  ] as const;
+
+  private readonly warmupMessages = [
+    'SERVICE WAKING UP ... stretching semicolons',
+    'LOADING VIBES ... PLEASE HOLD THE DRAMA',
+    'ALIGNING ANTENNAS ... THEY REFUSE TO ALIGN BACK',
+    'CHECKING WIRES ... MOSTLY FOR PERSONAL GROWTH',
+  ] as const;
+
+  private readonly promptMessages = [
+    'TYPE MESSAGE AND PRESS ENTER TO SEND',
+    'AWAITING WORDS ... PREFERABLY ON PURPOSE',
+    'READY FOR ALERT TEXT ... MAKE IT BRIEF, MAKE IT LOUD',
+    'INPUT PORT OPEN ... FEED IT A SENTENCE',
+  ] as const;
+
+  private readonly sendingMessages = [
+    'PACKING ALERT INTO A VERY SMALL ENVELOPE ...',
+    'ASKING /api/alert/send IF IT IS READY FOR RESPONSIBILITY ...',
+    'NEGOTIATING WITH THE OUTBOX ... IT HAS DEMANDS',
+    'POLISHING PAYLOAD ... NOW 14% MORE OFFICIAL',
+    'TELLING THE NETWORK TO ACT NATURAL ...',
+    'CONVERTING PANIC INTO STRUCTURED JSON ...',
+  ] as const;
+
+  private readonly emailSuccessMessages = [
+    'EMAIL SENT ... THE INBOX HAS BEEN NOTIFIED WITH STYLE',
+    'EMAIL DELIVERED ... TINY CELEBRATION IN PORT 443',
+    'EMAIL SUCCESS ... THE SUBJECT LINE DID ITS JOB',
+    'EMAIL MADE IT ... PLEASE PRETEND THIS WAS EASY',
+  ] as const;
+
+  private readonly emailFailureMessages = [
+    'EMAIL FAILED ... THE INBOX LOOKED AWAY AT THE WRONG TIME',
+    'EMAIL DID NOT SEND ... OUTBOX IS DOING PERFORMANCE ART',
+    'EMAIL FAILURE ... SMTP SHRUGGED IN A TECHNICAL WAY',
+    'EMAIL STALLED ... THE ENVELOPE GOT STAGE FRIGHT',
+  ] as const;
+
+  private readonly smsSuccessMessages = [
+    'SMS SENT ... POCKET BUZZ PROBABLY INCOMING',
+    'SMS DELIVERED ... THE TINY TEXT TRAIN LEFT THE STATION',
+    'SMS SUCCESS ... THUMBS MAY NOW BE ALERTED',
+    'SMS MADE IT ... SOMEWHERE A PHONE FEELS IMPORTANT',
+  ] as const;
+
+  private readonly smsFailureMessages = [
+    'SMS FAILED ... THE PHONE VIBRATION UNION DECLINED',
+    'SMS DID NOT SEND ... CARRIER SAID MAYBE LATER',
+    'SMS FAILURE ... TEXT MESSAGE TRIPPED OVER A CLOUD',
+    'SMS STALLED ... THE POCKET BUZZ HAS BEEN POSTPONED',
+  ] as const;
+
+  private readonly readyMessages = [
+    'TYPE ANOTHER MESSAGE TO BOTHER THE INTERNET AGAIN',
+    'READY AGAIN ... THE INTERNET HAS BEEN WARNED',
+    'ANOTHER ALERT MAY NOW APPROACH THE BENCH',
+    'QUEUE IS CLEAR ... TRY NOT TO GIVE IT A PERSONALITY',
+  ] as const;
+
+  private readonly alertFailureMessages = [
+    'ALERT PIPE SAID NO. RUDE.',
+    'REQUEST FAILED ... THE SERVER CHOSE MYSTERY',
+    'ALERT DID NOT LAUNCH ... CONTROL TOWER IS SQUINTING',
+    'NETWORK SAID ABSOLUTELY NOT ... VERY DRAMATIC',
+  ] as const;
 }
