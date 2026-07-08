@@ -40,3 +40,6 @@ pnpm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# User files
+docs/
