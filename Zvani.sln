@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BekaAlert", "BekaAlert\BekaAlert.csproj", "{A903CE22-DE2A-4233-A384-25DFEAF8BBDF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zvani.Application", "Zvani.Application\Zvani.Application.csproj", "{A903CE22-DE2A-4233-A384-25DFEAF8BBDF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

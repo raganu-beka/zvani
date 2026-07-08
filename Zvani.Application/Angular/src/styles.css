@@ -1,0 +1,152 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+  background: #111111;
+  font-family:
+    'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: #111111;
+  overflow: hidden;
+}
+
+input {
+  font: inherit;
+}
+
+.terminal-field {
+  position: relative;
+  font-family:
+    'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.terminal-field::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(46vw, 42rem);
+  opacity: 0.45;
+  background:
+    linear-gradient(#626262 0 0) 0 8% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 20% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 32% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 57% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 69% / 100% 1px no-repeat,
+    linear-gradient(#626262 0 0) 0 84% / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 0 12%, #626262 12% 12.25%, transparent 12.25% 100%),
+    linear-gradient(90deg, transparent 0 36%, #626262 36% 36.25%, transparent 36.25% 100%),
+    linear-gradient(90deg, transparent 0 60%, #626262 60% 60.25%, transparent 60.25% 100%),
+    linear-gradient(90deg, transparent 0 84%, #626262 84% 84.25%, transparent 84.25% 100%);
+}
+
+.terminal-line {
+  text-wrap: balance;
+}
+
+.terminal-input {
+  caret-color: transparent;
+  width: 100%;
+}
+
+.terminal-input::selection {
+  background: #ffa657;
+  color: #111111;
+}
+
+.terminal-input-frame {
+  max-width: min(48ch, calc(100vw - 12rem));
+}
+
+.auth-stage {
+  display: block;
+  pointer-events: auto;
+}
+
+.auth-panel {
+  position: absolute;
+  top: clamp(4rem, 25dvh, 12rem);
+  left: clamp(1.25rem, 5vw, 4rem);
+  width: min(28rem, calc(100vw - 2.5rem));
+  isolation: isolate;
+}
+
+.auth-logo {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-shadow: 0 0 18px rgba(255, 166, 87, 0.08);
+}
+
+.auth-clerk-mount {
+  width: 100%;
+}
+
+.auth-clerk-mount > * {
+  margin-inline: auto;
+}
+
+.auth-state-message {
+  background: rgba(24, 24, 28, 0.9);
+  border-radius: 6px;
+}
+
+.user-banner {
+  border-radius: 4px;
+}
+
+.user-banner :where(.cl-userButtonTrigger) {
+  outline-offset: 4px;
+}
+
+.user-banner :where(.cl-userButtonTrigger:focus-visible) {
+  outline: 2px solid #ffa657;
+}
+
+.terminal-cursor {
+  animation: terminal-blink 1.05s steps(2, start) infinite;
+}
+
+@media (max-width: 760px) {
+  .terminal-field::before {
+    width: 100%;
+    opacity: 0.18;
+  }
+
+  .terminal-input-frame {
+    max-width: min(44ch, calc(100vw - 8rem));
+  }
+
+  .user-banner {
+    max-width: calc(100vw - 2.5rem);
+  }
+
+  .auth-logo {
+    font-size: 0.46rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-cursor {
+    animation: none;
+  }
+}
+
+@keyframes terminal-blink {
+  to {
+    visibility: hidden;
+  }
+}
