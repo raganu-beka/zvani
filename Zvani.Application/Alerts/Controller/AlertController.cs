@@ -9,9 +9,9 @@ namespace Zvani.Application.Alerts.Controller;
 public sealed class AlertController(IAlertService alertService) : ControllerBase
 {
     [HttpPost("send")]
-    public IActionResult Send(SendAlertRequest request)
+    public async Task<IActionResult> Send(SendAlertRequest request, CancellationToken cancellationToken)
     {
-        var response = alertService.Send(request);
+        var response = await alertService.SendAsync(request, cancellationToken);
         return Accepted(response);
     }
 }
