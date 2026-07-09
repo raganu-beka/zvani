@@ -53,8 +53,9 @@ steps:
 
         mapfile -d '' env_vars < <(
           jq -r '
-            paths(scalars) as $path |
-            ($path | map(tostring) | join("__")) + "=" + (getpath($path) | tostring) + "\u0000"
+            del(.Logging, .AllowedHosts)
+            | paths(scalars) as $path
+            | ($path | map(tostring) | join("__")) + "=" + (getpath($path) | tostring) + "\u0000"
           ' "$(prodAppSettings.secureFilePath)"
         )
 
