@@ -2,14 +2,18 @@ trigger:
   branches:
     include:
       - main
-      - develop
+  paths:
+    include:
+      - Dockerfile
+      - azure-pipelines.yml
+      - Zvani.Application/**
 
 pool:
   vmImage: ubuntu-latest
 
 variables:
-  dockerRegistryServiceConnection: raganubeka-ghcr
   imageRepository: raganu-beka/zvani
+  imageName: ghcr.io/raganu-beka/zvani
   dockerfilePath: Dockerfile
   buildContext: .
   tag: $(Build.BuildId)
@@ -26,3 +30,41 @@ steps:
       tags: |
         $(tag)
         $(Build.SourceBranchName)
+
+  - task: DownloadSecureFile@1
+    name: prodAppSettings
+    displayName: Download production appsettings.json
+    inputs:
+      secureFile: $(secureAppSettingsFile)
+
+  - task: AzureCLI@2
+    displayName: Apply appsettings.json as App Service settings
+    inputs:
+      azureSubscription: $(azureSubscription)
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -euo pipefail
+
+        mapfile -d '' app_settings < <(
+          jq -r '
+            paths(scalars) as $path |
+            ($path | map(tostring) | join("__")) + "=" + (getpath($path) | tostring) + "\u0000"
+          ' "$(prodAppSettings.secureFilePath)"
+        )
+
+        app_settings+=("WEBSITES_PORT=8080")
+        app_settings+=("ASPNETCORE_ENVIRONMENT=Production")
+
+        az webapp config appsettings set \
+          --resource-group "$(resourceGroupName)" \
+          --name "$(appName)" \
+          --settings "${app_settings[@]}" \
+          --output none
+
+  - task: AzureWebAppContainer@1
+    displayName: Deploy container to Azure App Service
+    inputs:
+      azureSubscription: $(azureSubscription)
+      appName: $(appName)
+      containers: $(imageName):$(tag)
