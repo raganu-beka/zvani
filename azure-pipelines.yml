@@ -43,7 +43,7 @@ steps:
       secureFile: $(secureAppSettingsFile)
 
   - task: AzureCLI@2
-    displayName: Apply appsettings.json to Azure App Service
+    displayName: Deploy Azure Container App
     inputs:
       azureSubscription: $(azureSubscription)
       scriptType: bash
@@ -51,25 +51,18 @@ steps:
       inlineScript: |
         set -euo pipefail
 
-        mapfile -d '' app_settings < <(
+        mapfile -d '' env_vars < <(
           jq -r '
             paths(scalars) as $path |
             ($path | map(tostring) | join("__")) + "=" + (getpath($path) | tostring) + "\u0000"
           ' "$(prodAppSettings.secureFilePath)"
         )
 
-        app_settings+=("WEBSITES_PORT=8080")
-        app_settings+=("ASPNETCORE_ENVIRONMENT=Production")
+        env_vars+=("ASPNETCORE_ENVIRONMENT=Production")
+        env_vars+=("ASPNETCORE_URLS=http://+:8080")
 
-        az webapp config appsettings set \
+        az containerapp update \
           --resource-group "$(resourceGroupName)" \
           --name "$(appName)" \
-          --settings "${app_settings[@]}" \
-          --output none
-
-  - task: AzureWebAppContainer@1
-    displayName: Deploy container to Azure App Service
-    inputs:
-      azureSubscription: $(azureSubscription)
-      appName: $(appName)
-      containers: $(imageName):$(tag)
+          --image "$(imageName):$(tag)" \
+          --set-env-vars "${env_vars[@]}"
