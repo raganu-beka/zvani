@@ -12,11 +12,16 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  imageRepository: raganu-beka/zvani
-  imageName: ghcr.io/raganu-beka/zvani
-  dockerfilePath: Dockerfile
-  buildContext: .
-  tag: $(Build.BuildId)
+  - group: zvani-group
+
+  - name: dockerfilePath
+    value: Dockerfile
+
+  - name: buildContext
+    value: .
+
+  - name: tag
+    value: $(Build.BuildId)
 
 steps:
   - task: Docker@2
@@ -38,7 +43,7 @@ steps:
       secureFile: $(secureAppSettingsFile)
 
   - task: AzureCLI@2
-    displayName: Apply appsettings.json as App Service settings
+    displayName: Apply appsettings.json to Azure App Service
     inputs:
       azureSubscription: $(azureSubscription)
       scriptType: bash
