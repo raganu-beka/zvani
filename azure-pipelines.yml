@@ -52,10 +52,10 @@ steps:
         set -euo pipefail
 
         mapfile -d '' env_vars < <(
-          jq -r '
-            del(.Logging, .AllowedHosts)
-            | paths(scalars) as $path
-            | ($path | map(tostring) | join("__")) + "=" + (getpath($path) | tostring) + "\u0000"
+          jq -j '
+            del(.Logging, .AllowedHosts) |
+            paths(scalars) as $path |
+            ($path | map(tostring) | join("__")) + "=" + (getpath($path) | tostring) + "\u0000"
           ' "$(prodAppSettings.secureFilePath)"
         )
 
@@ -66,4 +66,5 @@ steps:
           --resource-group "$(resourceGroupName)" \
           --name "$(appName)" \
           --image "$(imageName):$(tag)" \
-          --set-env-vars "${env_vars[@]}"
+          --set-env-vars "${env_vars[@]}" \
+          --output none
