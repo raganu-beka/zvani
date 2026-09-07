@@ -5,6 +5,8 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>Zvani.Application</RootNamespace>
+        <SpaRoot>Angular/</SpaRoot>
+        <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules/**;$(SpaRoot).angular/**</DefaultItemExcludes>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,5 +16,22 @@
         <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3"/>
         <PackageReference Include="Twilio" Version="7.14.9"/>
     </ItemGroup>
+
+    <ItemGroup>
+        <Content Remove="$(SpaRoot)**;wwwroot/**"/>
+    </ItemGroup>
+
+    <Target Name="PublishAngular" AfterTargets="ComputeFilesToPublish">
+        <Exec WorkingDirectory="$(SpaRoot)" Command="bun install --frozen-lockfile"/>
+        <Exec WorkingDirectory="$(SpaRoot)" Command="bun run build --configuration production"/>
+        <ItemGroup>
+            <AngularPublishFiles Include="wwwroot/**"/>
+            <ResolvedFileToPublish Include="@(AngularPublishFiles->'%(FullPath)')">
+                <RelativePath>wwwroot/%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+            </ResolvedFileToPublish>
+        </ItemGroup>
+    </Target>
 
 </Project>

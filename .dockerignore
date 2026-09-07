@@ -1,8 +1,8 @@
-.git
-.idea
-**/bin
-**/obj
-**/node_modules
-**/out-tsc
-**/.angular
-**/appsettings.*.json
+**
+!Dockerfile
+!Zvani.Web/
+!Zvani.Web/bin/
+!Zvani.Web/bin/Release/
+!Zvani.Web/bin/Release/net10.0/
+!Zvani.Web/bin/Release/net10.0/publish/
+!Zvani.Web/bin/Release/net10.0/publish/**
