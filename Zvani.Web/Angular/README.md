@@ -4,13 +4,34 @@ This project was generated using [Angular CLI](https://github.com/angular/angula
 
 ## Development server
 
-To start a local development server, run:
+Install the .NET 10 SDK, Node.js 24, and Bun 1.3.14. Configure the backend's
+Clerk, Azure Email, Twilio, and alert settings in the ignored
+`Zvani.Web/appsettings.Development.json` file or through environment variables.
+
+From the repository root, start ASP.NET Core in one terminal:
 
 ```bash
-ng serve
+dotnet run --project Zvani.Web/Zvani.Web.csproj --launch-profile https
+```
+
+In a second terminal, start Angular:
+
+```bash
+cd Zvani.Web/Angular
+bun install --frozen-lockfile
+bun start
 ```
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+
+Angular forwards `/api/...` requests to `https://localhost:7011` through
+`proxy.conf.json`. This matches the backend's `https` launch profile and keeps
+API requests on the same browser origin. The proxy accepts the local development
+certificate through `secure: false`. This setting applies only to the Angular
+development server.
+
+Keep both servers running. If you change the backend HTTPS port, update the proxy
+target and restart `bun start`.
 
 ## Code scaffolding
 
@@ -34,7 +55,8 @@ To build the project run:
 ng build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+This compiles the frontend into `../wwwroot/`. By default, the production build
+optimizes the application for performance and size.
 
 ## Running unit tests
 
