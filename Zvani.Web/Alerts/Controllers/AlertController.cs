@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Zvani.Application.Alerts.Contracts;
 using Zvani.Application.Alerts.Interfaces;
 
-namespace Zvani.Application.Alerts.Controller;
+namespace Zvani.Application.Alerts.Controllers;
 
 [Authorize]
 [ApiController]
